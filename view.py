@@ -1,0 +1,75 @@
+from collections import namedtuple
+
+
+UartModel = namedtuple('UartModel', 'rxc txc dev')
+PageModel = namedtuple('PageModel', 'now top follow')
+
+
+def flash_rx(uart_model):
+    rx, tx, dev = uart_model
+    return UartModel(rx + 1, tx, dev)  
+
+
+def reset_rx(uart_model):
+    _, tx, dev = uart_model
+    return UartModel(0, tx, dev)  
+
+
+def upsert_page(page_model, page):
+    now, _, follow = page_model
+    top = page.ndx
+    if follow or now == 0:
+        return PageModel(top, top, follow)
+
+    return PageModel(now, top, follow)
+
+
+def follow_page(page_model):
+    _, top, _ = page_model
+    return PageModel(top, top, True)
+
+
+def move_to_page(page_model, move_by):
+    now, top, _ = page_model
+    return PageModel(max(min(now + move_by, top), 1), top, False)
+
+
+def jump_to_page(page_model, ndx):
+    now, top, _ = page_model
+    if ndx > 0:
+        return PageModel(min(ndx, top), top, False)
+    elif ndx < 0:
+        return PageModel(max(now + ndx, 1), top, False)
+
+
+def get_page_mode(page_model):
+    if page_model.top == 0:
+        return '(wait)'
+    if page_model.follow:
+        return 'latest'
+    return 'scroll'
+
+
+_stack = []
+
+
+def show(overlay):
+    if len(_stack) > 0:
+        _, _, close = _stack.pop()
+        close()
+    _stack.append(overlay)
+
+
+def has_overlays():
+    return len(_stack) > 0;
+
+
+def update_overlay(poll):
+    _, update, close = _stack[-1]
+    if update(poll) == 'quit':
+        close()
+        _stack.pop()
+    # in case update replaced overlay, won't redraw old window
+    if has_overlays():
+        redraw_overlay, _, _ = _stack[-1]
+        redraw_overlay()
