@@ -107,13 +107,15 @@ def main(filename, is_tty, stdscr):
 
             while True:
                 page = find_by_ndx(db, Page, page_model.now)
-                maybe_page = next_page(page_model.top, uart)
-                if maybe_page:
-                    save_one(db, maybe_page)
+                result, maybe_page = next_page(page_model.top, uart)
+                if result != 'none':
                     uart_model = flash_rx(uart_model)
-                    page_model = upsert_page(page_model, maybe_page)
                 else:
                     uart_model = reset_rx(uart_model)
+
+                if maybe_page:
+                    save_one(db, maybe_page)
+                    page_model = upsert_page(page_model, maybe_page)
                 
                 ev, arg = poll_user(stdscr)
                 if has_overlays():
@@ -169,11 +171,7 @@ def main(filename, is_tty, stdscr):
             'fatal error', 
             str(e).lower()
         )
-    except CursesError as e:
-        print(
-            'exit: terminal window is too small\n'
-            '      minimal supported terminal size is 80x24'
-        )
+
 
 
 if __name__ == '__main__':

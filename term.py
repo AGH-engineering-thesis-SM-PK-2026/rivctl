@@ -45,15 +45,33 @@ _my = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
 _hp = 2
 
 
-def _window(title, sz, pos=(0, 0)):
+def _bg(win, color):
+    win.clear()
+    win.bkgd(' ', color)
+
+
+def _txt(win, text, pos, color):
+    x, y = pos
+    win.addstr(y, x, text, color)
+
+
+def _box(win, char, pos, size, color):
+    x, y = pos
+    w, h = size
+    win.attron(color)
+    for v in range(y, y + h):
+        win.hline(y, x, char, w)
+    win.attroff(color)
+
+
+def _window(title, sz, pos=(0, 0), keypad=False):
     w, h = sz
     x, y = pos
     win = curses.newwin(h, w, x, y)
+    win.keypad(keypad)
     win.bkgd(' ', _po())
-    win.attron(_bw())
-    win.hline(0, 0, ' ', w)
-    win.attroff(_bw())
-    win.addstr(0, _hp, f' {title} ', _po())
+    _box(win, ' ', (0, 0), (w, 1), _bw())
+    _txt(win, f' {title} ', (_hp, 0), _po())
     return win
 
 
@@ -75,7 +93,7 @@ def _draw_btns(win, btns, y, sel):
     x = w - wbtn
     for i, label in enumerate(labels):
         color = _bh() if sel == i else _bp()
-        win.addstr(y, x, label, color)
+        _txt(win, label, (x, y), color)
         x += len(label) + _hp
 
 
@@ -85,31 +103,30 @@ def _draw_input(win, text, y, focus):
     cut = text[-wi+1:]
 
     color = _bh() if focus else _bw()
-    win.attron(color)
-    win.hline(y, _hp, ' ', wi)
-    win.attroff(color)
-    win.addstr(y, _hp, cut, color)
+    pos = (_hp, y)
+    _box(win, ' ', pos, (wi, 1), color)
+    _txt(win, cut, pos, color)
     if focus:
-        win.addstr(y, len(cut) + _hp, '█', color)
+        _txt(win, '█', (len(cut) + _hp, y), color)
 
 
-def _draw_box(win, pos, sz, color, title=None, label=None):
+def _draw_outline(win, pos, sz, color, title=None, label=None):
     x, y = pos
     w, h = sz
     top = '┌' + '─' * w + '┐'
     bottom = '└' + '─' * w + '┘'
-    win.addstr(y - 1, x - 1, top, color)
-    win.addstr(y + h, x - 1, bottom, color)
+    _txt(win, top, (x - 1, y - 1), color)
+    _txt(win, bottom, (x - 1, y + h), color)
     for v in range(y, y + h):
-        win.addch(v, x - 1, '│', color)
-        win.addch(v, x + w, '│', color)
+        _txt(win, '│', (x - 1, v), color)
+        _txt(win, '│', (x + w, v), color)
     if title:
         title_text, title_color = title
-        win.addstr(y - 1, x, f' {title_text} ', title_color or color)
+        _txt(win, f' {title_text} ', (x, y - 1), title_color or color)
     if label:
         label_text, label_color = label
         u = x + w - len(label_text) - 4
-        win.addstr(y + h, u, f' {label_text} ', label_color or color)
+        _txt(win, f' {label_text} ', (u, y + h), label_color or color)
 
 
 def _draw_scroll_bar(win, pos, h, r, pct, color):
@@ -117,7 +134,7 @@ def _draw_scroll_bar(win, pos, h, r, pct, color):
     t = int(pct * 0.99 * (h - r * 2)) + r
     for v in range(h):
         track = v >= t - r and v <= t + r
-        win.addch(v + y, x, '█' if track else '│', color)
+        _txt(win, '█' if track else '│', (x, v + y), color)
 
 
 def _toast(title, message, hx=0):
@@ -125,10 +142,9 @@ def _toast(title, message, hx=0):
 
     w = max([len(line) for line in lines]) + _hp*2
     h = len(lines) + 5 + hx
-    win = _window(title, (w, h), (2, 2))
-    win.keypad(True)
+    win = _window(title, (w, h), (2, 2), keypad=True)
     for i, line in enumerate(lines):
-        win.addstr(i + 2, _hp, line, _po())
+        _txt(win, line, (_hp, i + 2), _po())
 
     return win
 
@@ -242,8 +258,8 @@ def pager(title, text, sz, btns):
     def redraw():
         for i in range(row, row+vh):
             y = i - row + 2
-            win.hline(y, _hp, ' ', vw)
-            win.addstr(y, _hp, lines[i][:vw-1])
+            _box(win, ' ', (_hp, y), (vw, 1), _po())
+            _txt(win, lines[i][:vw-1], (_hp, y), _po())
         _draw_scroll_bar(win, (w - 2, 2), vh, 1, row / bottom, _po())
         _draw_btns(win, btns, h - 2, btn_sel)
         win.refresh()
@@ -277,7 +293,8 @@ def pager(title, text, sz, btns):
 
 
 def abort(win, title, message):
-    paint_blue(win)
+    _bg(win, _fw())
+
     redraw, update, _ = popup(title, message, [('exit', None)])
     while update(poll_user(win)) != 'quit':
         redraw()
@@ -285,7 +302,7 @@ def abort(win, title, message):
 
 
 def ensure_vga(win):
-    h, w = win.getmaxyx()
+    w, h = _window_sz(win)
     if h < 24 or w < 80:
         abort(win, 'bad size', 'terminal size must be at least 80x24')
 
@@ -298,14 +315,8 @@ _regs_names = [
 ]
 
 
-def paint_blue(win):
-    win.clear()
-    win.bkgd(' ', _fw())
-
-
 def main_view(win, page, tab):
-    paint_blue(win)
-
+    _bg(win, _fw())
 
     rx = 2
     mx = 38
@@ -313,24 +324,24 @@ def main_view(win, page, tab):
 
     if page:
         regs_vals = ['00000000'] + page.regs.split(',')[:31]
-        win.addstr(oy, rx + 1, 'pc    ', _fh())
-        win.addstr(oy, rx + 7, f'{page.pc:8}', _fw())
+        _txt(win, 'pc    ', (rx + 1, oy), _fh())
+        _txt(win, f'{page.pc:8}', (rx + 7, oy), _fw())
         for i, reg_name, reg_val in zip(range(32), _regs_names, regs_vals):
             x = (0 if i < 16 else 16) + rx + 1
             y = i % 16 + oy + 2
-            win.addstr(y, x, f'{reg_name:6}', _fh())
-            win.addstr(y, x + 6, f'{reg_val:8}', _fw())
+            _txt(win, f'{reg_name:6}', (x, y), _fh())
+            _txt(win, f'{reg_val:8}', (x + 6, y), _fw())
     else:
-        win.addstr(6, rx + 2, 'no pages yet', _fw())
+        _txt(win, 'no pages yet', (rx + 2, 6), _fw())
 
     if page:
         data_vals = ['00000000'] * 32
         for i, data_val in zip(range(32), data_vals):
             x = i % 4 * 10 + mx + 1
             y = i // 4 + oy
-            win.addstr(y, x, f'{data_val:8}', _fw())
+            _txt(win, f'{data_val:8}', (x, y), _fw())
     else:
-        win.addstr(6, mx + 2, 'no pages yet', _fw())
+        _txt(win, 'no pages yet', (mx + 2, 6), _fw())
 
     if page:
         prog_vals = [
@@ -344,26 +355,26 @@ def main_view(win, page, tab):
             if prog_val:
                 paddr, instr = prog_val
                 mnemo, params = instr.split(' ', 1)
-                win.addstr(y, mx + 1, f'{paddr:8}', _fh())
-                win.addstr(y, mx + 11, f'{mnemo:6}{params}', _fw())
+                _txt(win, f'{paddr:8}', (mx + 1, y), _fh())
+                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), _fw())
             else:
-                win.addstr(y, mx + 1, '--------', _fh())
-                win.addstr(y, mx + 11, '-', _fw())
+                _txt(win, '--------', (mx + 1, y), _fh())
+                _txt(win, '-', (mx + 11, y), _fw())
     else:
-        win.addstr(16, mx + 2, 'no pages yet', _fw())
+        _txt(win, 'no pages yet', (mx + 2, 16), _fw())
         
-    _draw_box(
+    _draw_outline(
         win, 
         (rx, 4), (32, 18), _fw(), 
         ('regfile', _fi() if tab == 0 else None)
     )
-    _draw_box(
+    _draw_outline(
         win, 
         (mx, 4), (40, 8), _fw(),
         ('datamem', _fi() if tab == 1 else None), 
         ('offset: 00000000' if page else 'offset:      N/A', None) 
     )
-    _draw_box(
+    _draw_outline(
         win, 
         (mx, 14), (40, 8), _fw(), 
         ('progmem', _fi() if tab == 2 else None),
@@ -372,25 +383,26 @@ def main_view(win, page, tab):
 
 
 def task_bar(win, uart_model):
-    h, w = win.getmaxyx()
+    w, h = _window_sz(win)
     y = h - 1
-    win.attron(_bw())
-    win.hline(y, 0, ' ', w)
+
+    _box(win, ' ', (0, y), (w, 1), _bw())
 
     short_dev = uart_model.dev.split('/')[-1]
     ox = len(short_dev)
-    win.addch(y, w - ox - 11, '■', _tr() if not uart_model.rxc & 1 else _tv())
-    win.addch(y, w - ox - 10, '■', _tt() if not uart_model.txc & 1 else _tv())
-    win.addstr(y, w - ox - 9, f' uart: {short_dev}')
+    wo = w - ox
+    _txt(win, '■', (wo - 11, y), _tr() if not uart_model.rxc & 1 else _tv())
+    _txt(win, '■', (wo - 10, y), _tt() if not uart_model.txc & 1 else _tv())
+    _txt(win, f' uart: {short_dev}', (wo - 9, y), _bw())
     
-    win.addstr(y, 0, ' h ')
-    win.addstr(y, 3, 'help msg ', _tb())  
-    win.addstr(y, 12, ' s ')
-    win.addstr(y, 15, 'save to  ', _tb())
-    win.addstr(y, 24, ' l ')
-    win.addstr(y, 27, 'latest   ', _tb())
-    win.addstr(y, 36, ' q ')
-    win.addstr(y, 39, 'quit     ', _tb())
+    _txt(win, ' h ', (0, y), _bw())
+    _txt(win, 'help msg ', (3, y), _tb())  
+    _txt(win, ' s ', (12, y), _bw())
+    _txt(win, 'save to  ', (15, y), _tb())
+    _txt(win, ' l ', (24, y), _bw())
+    _txt(win, 'latest   ', (27, y), _tb())
+    _txt(win, ' q ', (36, y), _bw())
+    _txt(win, 'quit     ', (39, y), _tb())
 
 
 _mode_colors = {
@@ -402,24 +414,23 @@ _mode_colors = {
 
 
 def top_bar(win, page_model, acts):
-    _, w = win.getmaxyx()
-    win.attron(_tb())
-    win.hline(0, 0, ' ', w)
+    w, _ = _window_sz(win)
+    _box(win, ' ', (0, 0), (w, 1), _tb())
     page_desc = f'page {page_model.now:4}/{page_model.top:4}'
     ox = len(page_desc)
-    win.addstr(0, w - ox - 10, page_desc)
+    _txt(win, page_desc, (w - ox - 10, 0), _tb())
 
     mode = get_page_mode(page_model)
     color = _mode_colors.get(mode, _mb)()
-    win.addstr(0, w - 8, f' {mode} ', color)
+    _txt(win, f' {mode} ', (w - 8, 0), color)
 
-    win.addstr(0, 1, ' Tab ', _tb())
-    win.addstr(0, 6, ' Nav ', _tb())
+    _txt(win, ' Tab ', (1, 0), _tb())
+    _txt(win, ' Nav ', (6, 0), _tb())
     
     x = 11
     for act in acts:
         text = f' {act} '
-        win.addstr(0, x, text, _tb())
+        _txt(win, text, (x, 0), _tb())
         x += len(text)
 
 

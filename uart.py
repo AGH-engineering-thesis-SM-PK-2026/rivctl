@@ -10,14 +10,19 @@ _rx_buffer = b''
 def next_page(ndx, fp):
     global _rx_buffer
 
+    i = 0
     while True:
         data = fp.readline()
         if not data:
             break
+        i += 1
         _rx_buffer += data
 
+    if i == 0:
+        return 'none', None
+
     if not _rx_buffer.endswith(b'\n'):
-        return None
+        return 'recv', None
 
     state = 'init'
     pc = 'N/A'
@@ -42,7 +47,7 @@ def next_page(ndx, fp):
     
     _rx_buffer = b''
 
-    return Page(ndx + 1, pc, regs)
+    return 'emit', Page(ndx + 1, pc, regs)
 
 
 def open_uart(dev, baud=9600):
