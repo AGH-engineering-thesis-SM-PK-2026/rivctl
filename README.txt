@@ -61,4 +61,4 @@
 
   
       Thank you for using rivctl!
-        Szymon Miekina, Nov 2025.
+        Szymon Miekina, Nov 2025
