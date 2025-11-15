@@ -259,8 +259,8 @@ def pager(title, text, sz, btns):
         for i in range(row, row+vh):
             y = i - row + 2
             _box(win, ' ', (_hp, y), (vw, 1), _po())
-            _txt(win, lines[i][:vw-1], (_hp, y), _po())
-        _draw_scroll_bar(win, (w - 2, 2), vh, 1, row / bottom, _po())
+            _txt(win, lines[i][:vw-2], (_hp, y), _po())
+        _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, _po())
         _draw_btns(win, btns, h - 2, btn_sel)
         win.refresh()
 
