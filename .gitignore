@@ -1,3 +1,10 @@
+# python files
 __pycache__
 .venv
+
+# build files
+rivctl_*/**
+*.pyz
+
+# session files
 *.db
