@@ -53,7 +53,7 @@ def parse_args():
     return filename, is_tty
 
 
-def main(filename, is_tty, stdscr):
+def loop(filename, is_tty, stdscr):
     stdscr.timeout(100)
 
     uart_dev = filename
@@ -174,6 +174,10 @@ def main(filename, is_tty, stdscr):
 
 
 
-if __name__ == '__main__':
+def main():
     filename, is_tty = parse_args() 
-    run(lambda scr: main(filename, is_tty, scr))
+    run(lambda scr: loop(filename, is_tty, scr))
+
+
+if __name__ == '__main__':
+    main()
