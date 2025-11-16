@@ -6,7 +6,6 @@ from data import (
     open_db, save_db, save_one, find_by_ndx
 )
 from term import (
-    CursesError,
     popup, dialog, pager, abort, poll_user, ensure_vga, main_view, 
     task_bar, top_bar, run
 )
@@ -64,7 +63,6 @@ def main(filename, is_tty, stdscr):
     page = None
 
     def redraw_static():
-        ensure_vga(stdscr)
         task_bar(stdscr, uart_model)
         top_bar(stdscr, page_model, _acts[tab])
         stdscr.refresh()
@@ -106,6 +104,8 @@ def main(filename, is_tty, stdscr):
                 return 'quit'
 
             while True:
+                ensure_vga(stdscr)
+
                 page = find_by_ndx(db, Page, page_model.now)
                 result, maybe_page = next_page(page_model.top, uart)
                 if result != 'none':

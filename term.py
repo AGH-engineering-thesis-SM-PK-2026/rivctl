@@ -45,6 +45,10 @@ _my = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
 _hp = 2
 
 
+class WindowError(Exception):
+    pass
+
+
 def _bg(win, color):
     win.clear()
     win.bkgd(' ', color)
@@ -60,19 +64,22 @@ def _box(win, char, pos, size, color):
     w, h = size
     win.attron(color)
     for v in range(y, y + h):
-        win.hline(y, x, char, w)
+        win.hline(v, x, char, w)
     win.attroff(color)
 
 
 def _window(title, sz, pos=(0, 0), keypad=False):
     w, h = sz
     x, y = pos
-    win = curses.newwin(h, w, x, y)
-    win.keypad(keypad)
-    win.bkgd(' ', _po())
-    _box(win, ' ', (0, 0), (w, 1), _bw())
-    _txt(win, f' {title} ', (_hp, 0), _po())
-    return win
+    try:
+        win = curses.newwin(h, w, x, y)
+        win.keypad(keypad)
+        win.bkgd(' ', _po())
+        _box(win, ' ', (0, 0), (w, 1), _bw())
+        _txt(win, f' {title} ', (_hp, 0), _po())
+        return win
+    except CursesError:
+        raise WindowError('invalid window pos/size')
 
 
 def _window_sz(win):
@@ -295,9 +302,14 @@ def pager(title, text, sz, btns):
 def abort(win, title, message):
     _bg(win, _fw())
 
-    redraw, update, _ = popup(title, message, [('exit', None)])
-    while update(poll_user(win)) != 'quit':
-        redraw()
+    try:
+        redraw, update, _ = popup(title, message, [('exit', None)])
+        while update(poll_user(win)) != 'quit':
+            redraw()
+    except WindowError:
+        print(f'exit: {title}')
+        for line in message.split('\n'):
+            print(f'  {line}')
     sys.exit(1)
 
 
