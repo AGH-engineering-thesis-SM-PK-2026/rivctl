@@ -1,4 +1,5 @@
 import re
+import io
 import serial
 
 from data import Page
@@ -50,7 +51,14 @@ def next_page(ndx, fp):
     return 'emit', Page(ndx + 1, pc, regs)
 
 
+def null_uart():
+    return io.StringIO()
+
+
 def open_uart(dev, baud=9600):
+    if not dev:
+        return null_uart()
+
     if re.search('[^a-zA-Z0-9/]', dev):
         raise ValueError('device name contains illegal characters')
     

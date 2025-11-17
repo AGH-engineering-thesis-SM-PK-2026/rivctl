@@ -27,7 +27,7 @@ def _create_spec(con, ent_type):
     field_arg = ','.join('?' * len(fields))
     field_def = ','.join(fields)
 
-    init = f'CREATE TABLE {table}({field_def})'
+    init = f'CREATE TABLE IF NOT EXISTS {table}({field_def})'
     find_all = f'SELECT {field_def} FROM {table}'
     find_ndx = f'SELECT {field_def} FROM {table} WHERE ndx = ?'
     count = f'SELECT COUNT(*) FROM {table}'

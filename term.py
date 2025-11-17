@@ -400,13 +400,19 @@ def task_bar(win, uart_model):
 
     _box(win, ' ', (0, y), (w, 1), _bw())
 
-    short_dev = uart_model.dev.split('/')[-1]
-    ox = len(short_dev)
-    wo = w - ox
-    _txt(win, '■', (wo - 11, y), _tr() if not uart_model.rxc & 1 else _tv())
-    _txt(win, '■', (wo - 10, y), _tt() if not uart_model.txc & 1 else _tv())
-    _txt(win, f' uart: {short_dev}', (wo - 9, y), _bw())
-    
+    if uart_model.dev:
+        short_dev = uart_model.dev.split('/')[-1]
+        ox = len(short_dev)
+        wo = w - ox
+        _txt(win, '■', (wo - 11, y), _tv() if uart_model.rxc & 1 else _tr())
+        _txt(win, '■', (wo - 10, y), _tv() if uart_model.txc & 1 else _tt())
+        _txt(win, f' uart: {short_dev}', (wo - 9, y), _bw())
+    else:
+        msg = 'uart disconnected'
+        ox = len(msg)
+        wo = w - ox
+        _txt(win, f' {msg} ', (wo - 3, y), _bw())
+        
     _txt(win, ' h ', (0, y), _bw())
     _txt(win, 'help msg ', (3, y), _tb())  
     _txt(win, ' s ', (12, y), _bw())

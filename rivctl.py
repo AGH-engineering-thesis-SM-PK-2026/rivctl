@@ -3,7 +3,7 @@ import sys
 from uart import next_page, open_uart
 from data import (
     Page,
-    open_db, save_db, save_one, find_by_ndx
+    open_db, save_db, save_one, find_by_ndx, count
 )
 from term import (
     popup, dialog, pager, abort, poll_user, ensure_vga, main_view, 
@@ -13,6 +13,9 @@ from view import (
     UartModel, PageModel,
     flash_rx, reset_rx, upsert_page, follow_page, 
     move_to_page, jump_to_page, show, has_overlays, update_overlay
+)
+from msg_ import (
+    readme_
 )
 
 
@@ -56,8 +59,9 @@ def parse_args():
 def loop(filename, is_tty, stdscr):
     stdscr.timeout(100)
 
-    uart_dev = filename
-    uart_model = UartModel(0, 0, uart_dev)
+    device = filename if is_tty else None
+    stored = filename if not is_tty else None
+    uart_model = UartModel(0, 0, device)
     page_model = PageModel(0, 0, True)
     tab = 0
     page = None
@@ -79,12 +83,17 @@ def loop(filename, is_tty, stdscr):
                 '  python rivctl.py -r capture.db'
             )
 
-        with open_uart(uart_dev) as uart, open_db() as db:
+        with open_uart(device) as uart, open_db(stored) as db:
+            top_ndx = count(db, Page)
+            if top_ndx > 0:
+                page_model = PageModel(1, top_ndx, False)
+                page = find_by_ndx(db, Page, 1)
+
             def quit(_):
                 sys.exit(0)
 
             def save_to_db(path):
-                filename = f'{path}.db'
+                filename = f'{path}.db' if not path.endswith('.db') else path
                 save_db(db, filename)
                 return 'quit'
 
@@ -129,13 +138,12 @@ def loop(filename, is_tty, stdscr):
                             [('no', None), ('yes', quit)]
                         ))
                     if arg == 'h':
-                        with open('README.txt', encoding='utf-8') as readme:
-                            show(pager(
-                                'help',
-                                readme.read(),
-                                (54, 15),
-                                [('ok', None)]
-                            ))
+                        show(pager(
+                            'help',
+                            readme_,
+                            (54, 15),
+                            [('ok', None)]
+                        ))
                     if arg == 's':
                         show(dialog(
                             'save to file',
