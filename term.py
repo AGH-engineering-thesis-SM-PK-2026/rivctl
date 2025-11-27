@@ -2,8 +2,6 @@ import curses
 import signal
 import sys
 
-from view import get_page_mode
-
 
 _color_inits = []
 
@@ -27,19 +25,21 @@ def color_init():
 
 
 # colors!
-_fw = def_color(curses.COLOR_WHITE, curses.COLOR_BLUE)
-_fi = def_color(curses.COLOR_BLUE, curses.COLOR_WHITE)
-_fh = def_color(curses.COLOR_YELLOW, curses.COLOR_BLUE)
-_po = def_color(curses.COLOR_BLACK, curses.COLOR_WHITE)
-_bw = def_color(curses.COLOR_WHITE, curses.COLOR_BLACK)
-_bh = def_color(curses.COLOR_CYAN, curses.COLOR_BLACK)
-_bp = def_color(curses.COLOR_CYAN, curses.COLOR_WHITE)
-_tr = def_color(curses.COLOR_GREEN, curses.COLOR_BLACK)
-_tt = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
-_tv = def_color(curses.COLOR_BLACK, curses.COLOR_BLACK)
-_tb = def_color(curses.COLOR_BLACK, curses.COLOR_CYAN)
-_mb = def_color(curses.COLOR_CYAN, curses.COLOR_BLACK)
-_my = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
+_whcy = def_color(curses.COLOR_WHITE, curses.COLOR_CYAN)
+_whbl = def_color(curses.COLOR_WHITE, curses.COLOR_BLUE)
+_whbk = def_color(curses.COLOR_WHITE, curses.COLOR_BLACK)
+_yebl = def_color(curses.COLOR_YELLOW, curses.COLOR_BLUE)
+_yebk = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
+_cywh = def_color(curses.COLOR_CYAN, curses.COLOR_WHITE)
+_cybk = def_color(curses.COLOR_CYAN, curses.COLOR_BLACK)
+_blwh = def_color(curses.COLOR_BLUE, curses.COLOR_WHITE)
+_blcy = def_color(curses.COLOR_BLUE, curses.COLOR_CYAN)
+_grbk = def_color(curses.COLOR_GREEN, curses.COLOR_BLACK)
+_mabk = def_color(curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+_bkwh = def_color(curses.COLOR_BLACK, curses.COLOR_WHITE)
+_bkcy = def_color(curses.COLOR_BLACK, curses.COLOR_CYAN)
+_bkgr = def_color(curses.COLOR_BLACK, curses.COLOR_GREEN)
+_bkbk = def_color(curses.COLOR_BLACK, curses.COLOR_BLACK)
 
 # horizontal window padding/button spacing
 _hp = 2
@@ -68,15 +68,19 @@ def _box(win, char, pos, size, color):
     win.attroff(color)
 
 
-def _window(title, sz, pos=(0, 0), keypad=False):
+def _window(title, sz, pos=(0, 0), keypad=False, fg=_bkwh, bg=_whbk):
     w, h = sz
     x, y = pos
     try:
-        win = curses.newwin(h, w, x, y)
+        win = curses.newwin(h, w, y, x)
+        win.attron(fg())
+        win.box()
+        win.attroff(fg())
         win.keypad(keypad)
-        win.bkgd(' ', _po())
-        _box(win, ' ', (0, 0), (w, 1), _bw())
-        _txt(win, f' {title} ', (_hp, 0), _po())
+        win.bkgd(' ', fg())
+        if title:
+            # _box(win, ' ', (0, 0), (w, 1), bg())
+            _txt(win, f' {title} ', (_hp, 0), fg())
         return win
     except CursesError:
         raise WindowError('invalid window pos/size')
@@ -99,7 +103,7 @@ def _draw_btns(win, btns, y, sel):
     wbtn = sum([len(label) + _hp for label in labels])
     x = w - wbtn
     for i, label in enumerate(labels):
-        color = _bh() if sel == i else _bp()
+        color = _cybk() if sel == i else _cywh()
         _txt(win, label, (x, y), color)
         x += len(label) + _hp
 
@@ -109,7 +113,7 @@ def _draw_input(win, text, y, focus):
     wi = w - _hp*2
     cut = text[-wi+1:]
 
-    color = _bh() if focus else _bw()
+    color = _cybk() if focus else _whbk()
     pos = (_hp, y)
     _box(win, ' ', pos, (wi, 1), color)
     _txt(win, cut, pos, color)
@@ -151,7 +155,7 @@ def _toast(title, message, hx=0):
     h = len(lines) + 5 + hx
     win = _window(title, (w, h), (2, 2), keypad=True)
     for i, line in enumerate(lines):
-        _txt(win, line, (_hp, i + 2), _po())
+        _txt(win, line, (_hp, i + 2), _bkwh())
 
     return win
 
@@ -265,9 +269,9 @@ def pager(title, text, sz, btns):
     def redraw():
         for i in range(row, row+vh):
             y = i - row + 2
-            _box(win, ' ', (_hp, y), (vw, 1), _po())
-            _txt(win, lines[i][:vw-2], (_hp, y), _po())
-        _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, _po())
+            _box(win, ' ', (_hp, y), (vw, 1), _bkwh())
+            _txt(win, lines[i][:vw-2], (_hp, y), _bkwh())
+        _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, _bkwh())
         _draw_btns(win, btns, h - 2, btn_sel)
         win.refresh()
 
@@ -299,8 +303,64 @@ def pager(title, text, sz, btns):
     return redraw, update, close
 
 
+def menu(pos, acts):
+    w = max([len(text) for text, _ in acts]) + 2
+    h = len(acts) + 2
+
+    win = _window(None, (w, h), pos, fg=_whcy, bg=_cywh)
+
+    accept_ev = False
+    act_sel = 0
+
+    def _draw_acts(y, sel):
+        for i, (text, _) in enumerate(acts):
+            if text == '-':
+                
+                line = '─' * (w - 2)
+                _txt(win, f'├{line}┤', (0, y + i), _whcy())
+            else:
+                color = _cybk() if i == sel else _whcy()
+                _txt(win, text, (1, y + i), color)
+
+    def _is_sel_hline(sel):
+        text, _ = acts[sel]
+        return text == '-'
+
+    def redraw():
+        _draw_acts(1, act_sel)
+        win.refresh()
+
+    def update(poll):
+        nonlocal accept_ev, act_sel
+        ev, arg = poll
+        if not accept_ev:
+            if ev == 'empty':
+                accept_ev = True
+        elif ev == 'move':
+            assert isinstance(arg, tuple)
+            _, my = arg
+            act_sel = max(min(act_sel - my, len(acts) - 1), 0)
+            if _is_sel_hline(act_sel):
+                act_sel = max(min(act_sel - my, len(acts) - 1), 0)
+        elif ev == 'key':
+            assert isinstance(arg, str)
+            if arg == 'esc':
+                return 'quit'
+            elif arg == 'enter':
+                _, action = acts[act_sel]
+                if action:
+                    return action(None)
+                return 'quit'
+        return 'ok'
+
+    def close():
+        win.erase()
+    
+    return redraw, update, close
+
+
 def abort(win, title, message):
-    _bg(win, _fw())
+    _bg(win, _whbl())
 
     try:
         redraw, update, _ = popup(title, message, [('exit', None)])
@@ -316,7 +376,7 @@ def abort(win, title, message):
 def ensure_vga(win):
     w, h = _window_sz(win)
     if h < 24 or w < 80:
-        abort(win, 'bad size', 'terminal size must be at least 80x24')
+        abort(win, 'Bad Size', 'Terminal size must be at least 80x24')
 
 
 _regs_names = [
@@ -328,7 +388,7 @@ _regs_names = [
 
 
 def main_view(win, page, tab):
-    _bg(win, _fw())
+    _bg(win, _whbl())
 
     rx = 2
     mx = 38
@@ -336,24 +396,24 @@ def main_view(win, page, tab):
 
     if page:
         regs_vals = ['00000000'] + page.regs.split(',')[:31]
-        _txt(win, 'pc    ', (rx + 1, oy), _fh())
-        _txt(win, f'{page.pc:8}', (rx + 7, oy), _fw())
+        _txt(win, 'pc    ', (rx + 1, oy), _yebl())
+        _txt(win, f'{page.pc:8}', (rx + 7, oy), _whbl())
         for i, reg_name, reg_val in zip(range(32), _regs_names, regs_vals):
             x = (0 if i < 16 else 16) + rx + 1
             y = i % 16 + oy + 2
-            _txt(win, f'{reg_name:6}', (x, y), _fh())
-            _txt(win, f'{reg_val:8}', (x + 6, y), _fw())
+            _txt(win, f'{reg_name:6}', (x, y), _yebl())
+            _txt(win, f'{reg_val:8}', (x + 6, y), _whbl())
     else:
-        _txt(win, 'no pages yet', (rx + 2, 6), _fw())
+        _txt(win, 'no pages yet', (rx + 2, 6), _whbl())
 
     if page:
         data_vals = ['00000000'] * 32
         for i, data_val in zip(range(32), data_vals):
             x = i % 4 * 10 + mx + 1
             y = i // 4 + oy
-            _txt(win, f'{data_val:8}', (x, y), _fw())
+            _txt(win, f'{data_val:8}', (x, y), _whbl())
     else:
-        _txt(win, 'no pages yet', (mx + 2, 6), _fw())
+        _txt(win, 'no pages yet', (mx + 2, 6), _whbl())
 
     if page:
         prog_vals = [
@@ -367,29 +427,29 @@ def main_view(win, page, tab):
             if prog_val:
                 paddr, instr = prog_val
                 mnemo, params = instr.split(' ', 1)
-                _txt(win, f'{paddr:8}', (mx + 1, y), _fh())
-                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), _fw())
+                _txt(win, f'{paddr:8}', (mx + 1, y), _yebl())
+                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), _whbl())
             else:
-                _txt(win, '--------', (mx + 1, y), _fh())
-                _txt(win, '-', (mx + 11, y), _fw())
+                _txt(win, '--------', (mx + 1, y), _yebl())
+                _txt(win, '-', (mx + 11, y), _whbl())
     else:
-        _txt(win, 'no pages yet', (mx + 2, 16), _fw())
+        _txt(win, 'no pages yet', (mx + 2, 16), _whbl())
         
     _draw_outline(
         win, 
-        (rx, 4), (32, 18), _fw(), 
-        ('regfile', _fi() if tab == 0 else None)
+        (rx, 4), (32, 18), _whbl(), 
+        ('regfile', _blwh() if tab == 0 else None)
     )
     _draw_outline(
         win, 
-        (mx, 4), (40, 8), _fw(),
-        ('datamem', _fi() if tab == 1 else None), 
+        (mx, 4), (40, 8), _whbl(),
+        ('datamem', _blwh() if tab == 1 else None), 
         ('offset: 00000000' if page else 'offset:      N/A', None) 
     )
     _draw_outline(
         win, 
-        (mx, 14), (40, 8), _fw(), 
-        ('progmem', _fi() if tab == 2 else None),
+        (mx, 14), (40, 8), _whbl(), 
+        ('progmem', _blwh() if tab == 2 else None),
         ('offset: 00000044' if page else 'offset:      N/A', None)
     )
 
@@ -398,58 +458,62 @@ def task_bar(win, uart_model):
     w, h = _window_sz(win)
     y = h - 1
 
-    _box(win, ' ', (0, y), (w, 1), _bw())
+    _box(win, ' ', (0, y), (w, 1), _whbk())
 
     if uart_model.dev:
         short_dev = uart_model.dev.split('/')[-1]
         ox = len(short_dev)
         wo = w - ox
-        _txt(win, '■', (wo - 11, y), _tv() if uart_model.rxc & 1 else _tr())
-        _txt(win, '■', (wo - 10, y), _tv() if uart_model.txc & 1 else _tt())
-        _txt(win, f' uart: {short_dev}', (wo - 9, y), _bw())
+        _txt(win, '■', (wo - 11, y), _bkbk() if uart_model.rxc & 1 else _grbk())
+        _txt(win, '■', (wo - 10, y), _bkbk() if uart_model.txc & 1 else _yebk())
+        _txt(win, f' <-> {short_dev}', (wo - 9, y), _whbk())
     else:
-        msg = 'uart disconnected'
+        msg = ' <-> <nil>'
         ox = len(msg)
         wo = w - ox
-        _txt(win, f' {msg} ', (wo - 3, y), _bw())
+        _txt(win, f' {msg} ', (wo - 9, y), _whbk())
         
-    _txt(win, ' h ', (0, y), _bw())
-    _txt(win, 'help msg ', (3, y), _tb())  
-    _txt(win, ' s ', (12, y), _bw())
-    _txt(win, 'save to  ', (15, y), _tb())
-    _txt(win, ' l ', (24, y), _bw())
-    _txt(win, 'latest   ', (27, y), _tb())
-    _txt(win, ' q ', (36, y), _bw())
-    _txt(win, 'quit     ', (39, y), _tb())
+    _txt(win, ' h ', (0, y), _whbk())
+    _txt(win, 'Halt   ', (3, y), _bkcy())  
+    _txt(win, ' z ', (10, y), _whbk())
+    _txt(win, 'Run    ', (13, y), _bkcy())
+    _txt(win, ' a ', (20, y), _whbk())
+    _txt(win, 'Cycle  ', (23, y), _bkcy())
+    _txt(win, ' s ', (30, y), _whbk())
+    _txt(win, 'Step   ', (33, y), _bkcy())
+    _txt(win, ' r ', (40, y), _whbk())
+    _txt(win, 'Reset  ', (43, y), _bkcy())
 
 
-_mode_colors = {
-    '(wait)': _my,
-    'scroll': _mb,
-    'latest': _mb,
-    'freeze': _mb
+_ctl_mode_colors = {
+    'ready*': _yebk,
+    'halted': _mabk,
+    'reset*': _yebk,
+    '<step>': _cybk,
+    '<*   >': _grbk,
+    '< *  >': _grbk,
+    '<  * >': _grbk,
+    '<   *>': _grbk,
 }
 
 
-def top_bar(win, page_model, acts):
+def top_bar(win, mode_model, page_model, acts):
     w, _ = _window_sz(win)
-    _box(win, ' ', (0, 0), (w, 1), _tb())
+    _box(win, ' ', (0, 0), (w, 1), _bkcy())
     page_desc = f'page {page_model.now:4}/{page_model.top:4}'
     ox = len(page_desc)
-    _txt(win, page_desc, (w - ox - 10, 0), _tb())
+    _txt(win, page_desc, (w - ox - 10, 0), _bkcy())
 
-    mode = get_page_mode(page_model)
-    color = _mode_colors.get(mode, _mb)()
-    _txt(win, f' {mode} ', (w - 8, 0), color)
+    color = _ctl_mode_colors.get(mode_model.ctl, _cybk)()
+    _txt(win, f' {mode_model.ctl} ', (w - 8, 0), color)
 
-    _txt(win, ' Tab ', (1, 0), _tb())
-    _txt(win, ' Nav ', (6, 0), _tb())
-    
-    x = 11
+    def _draw_btn(text, x):
+        _txt(win, text, (x + 1, 0), _bkcy())
+        return x + len(text) + 2
+
+    x = 1
     for act in acts:
-        text = f' {act} '
-        _txt(win, text, (x, 0), _tb())
-        x += len(text)
+        x = _draw_btn(act, x)
 
 
 def poll_user(win):

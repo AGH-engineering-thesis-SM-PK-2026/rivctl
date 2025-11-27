@@ -1,10 +1,12 @@
 [readme]
-■ WELCOME
-  This is a very short guide to using rivctl.
-  You can scroll through this article with
-  [↑↓] keys. To exit hit [Enter] or [Esc].
+■ WITAMY
+  Ten krótki przewodnik ma za zadanie oprowadzić
+  Cię po programie rivctl.
+  
+  Użyj klawiszy [↑↓] aby poruszać się po artykule. 
+  Aby wrócić do programu wciśnij [Enter] lub [Esc].
 
-■ PAGES
+■ STRONY
   When rivctl captures a debug packet it creates
   a new "page" and appends it to the database
   Pages are important because they fit on the
@@ -22,7 +24,7 @@
   pages - they will be listed and explained in
   sections below.
 
-■ TOPBAR
+■ PASEK GÓRNY
   ~ light-blue bar near the top of the screen ~
   Topbar is used for displaying actions relevant
   to current pane. Here is a short list of them:
@@ -40,7 +42,7 @@
   "scroll", jumping to specific page will cause
   the same effect.
 
-■ TASKBAR
+■ PASEK ZADAŃ
   ~ black bar near the bottom of the screen ~
   Taskbar consists of two parts. A small list of
   most basic actions will always be displayed.
@@ -61,6 +63,13 @@
   is an abbreviated device name.
 
   
-      Thank you for using rivctl!
-        Szymon Miekina, Nov 2025
+      Dzięki za skorzystanie z rivctl!
+        Szymon Miękina, Nov 2025
+.
+[no_file_dev]
+Path to capture file or serial console was not passed.
+To capture debug packets use:
+  python rivctl.py /dev/ttyUSB0
+Or view existing capture:
+  python rivctl.py -r capture.db
 .

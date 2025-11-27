@@ -22,20 +22,21 @@ def copy_files(where):
     shutil.copytree('.', where, ignore=_ignored)
 
 
-def update_files(where, tag):
+def update_files(where, tag, lang):
     print(_hi('Create main file entry __main__.py'))
     with open(f'{where}/__main__.py', 'w', encoding='utf-8') as fp:
         fp.write(
             'import rivctl\n\n'
-            f'# release {tag}\n\n'
+            f'# release {tag}-{lang}\n\n'
             'if __name__ == \'__main__\':\n'
-            f'  print(\'rivctl {tag}\')\n'
+            f'  print(\'rivctl {tag}-{lang}\')\n'
             '  rivctl.main()\n'
         )
+    msg_where = f'.release/lmsg_{lang}.txt'
     print(_hi('Update msg_.py'))
-    with open(f'{where}/.release/lmsg.txt', encoding='utf-8') as src_fp:
+    with open(msg_where, encoding='utf-8') as src_fp:
         msgs = lmsg.read_local_msg(src_fp)
-        msgs['readme'] += f'        rivctl.py {tag}\n'
+        msgs['readme'] += f'        rivctl.py {tag}-{lang}\n'
         with open(f'{where}/msg_.py', 'w', encoding='utf-8') as py_fp:
             lmsg.write_local_msg_py(py_fp, msgs)
 
@@ -66,15 +67,15 @@ def cleanup(where):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print('python create.py <TAG>')
+    if len(sys.argv) != 3:
+        print('python create.py <TAG> <LANG>')
         sys.exit(1)
-    _, tag = sys.argv
+    _, tag, lang = sys.argv
     ver = tag.replace('.', '')
-    where = f'rivctl_{ver}'
+    where = f'rivctl_{ver}_{lang}'
     try:
         copy_files(where)
-        update_files(where, tag)
+        update_files(where, tag, lang)
         install_deps(where)
         build_archive(where)
         print(_hi('Done'))

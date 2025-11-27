@@ -1,28 +1,32 @@
 import sys
 
-from uart import next_page, open_uart
+from uart import (
+    uart_recv, uart_emit, open_uart,
+    send_halt, send_start, send_step, send_cycle, send_reset, send_prog
+)
 from data import (
     Page,
     open_db, save_db, save_one, find_by_ndx, count
 )
 from term import (
-    popup, dialog, pager, abort, poll_user, ensure_vga, main_view, 
+    popup, dialog, pager, menu, abort, poll_user, ensure_vga, main_view, 
     task_bar, top_bar, run
 )
 from view import (
-    UartModel, PageModel,
-    flash_rx, reset_rx, upsert_page, follow_page, 
-    move_to_page, jump_to_page, show, has_overlays, update_overlay
+    UartModel, PageModel, ModeModel,
+    flash_rx, reset_rx, flash_tx, reset_tx, upsert_page, follow_page, 
+    move_to_page, jump_to_page, show, has_overlays, update_overlay, 
+    update_mode, to_halt_mode, to_run_mode, to_step_mode, to_reset_mode, to_upload_mode
 )
 from msg_ import (
-    readme_
+    readme_, no_file_dev_
 )
 
 
 _acts = [
-    [],
-    ['Find', '▲▼'],
-    ['▲▼']
+    ['File', 'Page'],
+    ['File', 'Page', '▲▼'],
+    ['File', 'Page', '▲▼']
 ]
 
 
@@ -63,24 +67,21 @@ def loop(filename, is_tty, stdscr):
     stored = filename if not is_tty else None
     uart_model = UartModel(0, 0, device)
     page_model = PageModel(0, 0, True)
+    mode_model = ModeModel('empty*', 'ready*')
     tab = 0
     page = None
 
     def redraw_static():
         task_bar(stdscr, uart_model)
-        top_bar(stdscr, page_model, _acts[tab])
+        top_bar(stdscr, mode_model, page_model, _acts[tab])
         stdscr.refresh()
 
     try:
         if not filename:
             abort(
                 stdscr,
-                'fatal error',
-                'path to serial console/capture file was not passed\n'
-                'to capture debug packets use:\n'
-                '  python rivctl.py /dev/ttyUSB0\n'
-                'or view existing capture:\n'
-                '  python rivctl.py -r capture.db'
+                'No File/Device',
+                no_file_dev_
             )
 
         with open_uart(device) as uart, open_db(stored) as db:
@@ -88,9 +89,6 @@ def loop(filename, is_tty, stdscr):
             if top_ndx > 0:
                 page_model = PageModel(1, top_ndx, False)
                 page = find_by_ndx(db, Page, 1)
-
-            def quit(_):
-                sys.exit(0)
 
             def save_to_db(path):
                 filename = f'{path}.db' if not path.endswith('.db') else path
@@ -112,57 +110,120 @@ def loop(filename, is_tty, stdscr):
                 
                 return 'quit'
 
+            def show_quit():
+                show(popup(
+                    'Quit',
+                    ' Really quit?  ',
+                    [('no', None), ('yes', lambda _: sys.exit(0))]
+                ))
+
+            def show_help():
+                show(pager(
+                    'Help',
+                    readme_,
+                    (54, 15),
+                    [('ok', None)]
+                ))
+
+            def show_save():
+                show(dialog(
+                    'Save As',
+                    'Enter session filename:                 ',
+                    [('cancel', None), ('save', save_to_db)]
+                ))
+            
+            def show_jump():
+                show(dialog(
+                    'Jump Tos',
+                    'Navigate to index:',
+                    [('cancel', None), ('go', go_to_page)]
+                ))
+
+            def to_latest():
+                nonlocal page_model
+                page_model = follow_page(page_model)
+
             while True:
                 ensure_vga(stdscr)
 
                 page = find_by_ndx(db, Page, page_model.now)
-                result, maybe_page = next_page(page_model.top, uart)
-                if result != 'none':
-                    uart_model = flash_rx(uart_model)
-                else:
-                    uart_model = reset_rx(uart_model)
 
-                if maybe_page:
-                    save_one(db, maybe_page)
-                    page_model = upsert_page(page_model, maybe_page)
+                what, value = uart_recv(uart)
+                if what == 'none':
+                    if value:
+                        uart_model = flash_rx(uart_model)
+                    else:
+                        uart_model = reset_rx(uart_model)
+                elif what == 'page':
+                    assert isinstance(value, tuple)
+                    page = Page(page_model.top, *value)
+                    save_one(db, page)
+                    page_model = upsert_page(page_model, page)
+
+                if uart_emit(uart):
+                    uart_model = flash_tx(uart_model)
+                else:
+                    uart_model = reset_tx(uart_model)
                 
+                mode_model = update_mode(mode_model, page_model)
+
                 ev, arg = poll_user(stdscr)
                 if has_overlays():
                     update_overlay((ev, arg))
                 elif ev == 'key':
                     assert isinstance(arg, str)
-                    if arg == 'q':
-                        show(popup(
-                            'quit',
-                            ' really quit?  ',
-                            [('no', None), ('yes', quit)]
-                        ))
-                    if arg == 'h':
-                        show(pager(
-                            'help',
-                            readme_,
-                            (54, 15),
-                            [('ok', None)]
-                        ))
-                    if arg == 's':
-                        show(dialog(
-                            'save to file',
-                            'enter filename where for a .db file:',
-                            [('cancel', None), ('save', save_to_db)]
-                        ))
-                    if arg == 'n':
-                        show(dialog(
-                            'jump',
-                            'navigate to index:',
-                            [('cancel', None), ('go', go_to_page)]
-                        ))
+                    if arg == 'Q':
+                        show_quit()
+                    if arg == 'H':
+                        show_help()
+                    if arg == 'S':
+                        show_save()
+                    if arg == 'U':
+                        # show_upload()
+                        pass
+                    if arg == 'N':
+                        show_jump()
+                    if arg == 'L':
+                        to_latest()
                     if arg == 'tab':
                         if tab == 2:
                             tab = 0
                         else:
                             tab += 1
-                    if arg == 'l':
-                        page_model = follow_page(page_model)
+                    if arg == 'F':
+                        show(menu(
+                            (1, 1), 
+                            [
+                                ('Save As ...', lambda _: show_save()),
+                                ('Upload ...', None),
+                                ('-', None),
+                                ('Help', lambda _: show_help()),
+                                ('Quit', lambda _: show_quit())
+                            ]
+                        ))
+                    if arg == 'P':
+                        show(menu(
+                            (7, 1),
+                            [
+                                ('To Page ...', lambda _: show_jump()),
+                                ('Latest', lambda _: to_latest())
+                            ]
+                        ))
+                    if arg == 'h':
+                        mode_model = to_halt_mode(mode_model)
+                        send_halt()
+                    if arg == 'z':
+                        mode_model = to_run_mode(mode_model)
+                        send_start()
+                    if arg == 'a':
+                        mode_model = to_step_mode(mode_model)
+                        send_cycle()
+                    if arg == 's':
+                        mode_model = to_step_mode(mode_model)
+                        send_step()
+                    if arg == 'r':
+                        mode_model = to_reset_mode(mode_model)
+                        send_reset()
                     main_view(stdscr, page, tab)
                 elif ev == 'move':
                     assert isinstance(arg, tuple)
@@ -179,7 +240,6 @@ def loop(filename, is_tty, stdscr):
             'fatal error', 
             str(e).lower()
         )
-
 
 
 def main():

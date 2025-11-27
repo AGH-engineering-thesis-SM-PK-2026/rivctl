@@ -3,7 +3,7 @@ from collections import namedtuple
 
 UartModel = namedtuple('UartModel', 'rxc txc dev')
 PageModel = namedtuple('PageModel', 'now top follow')
-
+ModeModel = namedtuple('ModeModel', 'page ctl')
 
 def flash_rx(uart_model):
     rx, tx, dev = uart_model
@@ -13,6 +13,16 @@ def flash_rx(uart_model):
 def reset_rx(uart_model):
     _, tx, dev = uart_model
     return UartModel(0, tx, dev)  
+
+
+def flash_tx(uart_model):
+    rx, tx, dev = uart_model
+    return UartModel(rx, tx + 1, dev)  
+
+
+def reset_tx(uart_model):
+    rx, _, dev = uart_model
+    return UartModel(rx, 0, dev)  
 
 
 def upsert_page(page_model, page):
@@ -48,6 +58,51 @@ def get_page_mode(page_model):
     if page_model.follow:
         return 'latest'
     return 'scroll'
+
+
+_run1 = '<*   >'
+_run2 = '< *  >'
+_run3 = '<  * >'
+_run4 = '<   *>'
+
+
+def update_mode(mode_model, page_model):
+    page = get_page_mode(page_model)
+    _, ctl = mode_model
+    if ctl == _run1:
+        return ModeModel(page, _run2)
+    if ctl == _run2:
+        return ModeModel(page, _run3)
+    if ctl == _run3:
+        return ModeModel(page, _run4)
+    if ctl == _run4:
+        return ModeModel(page, _run1)
+    return ModeModel(page, ctl)
+
+
+def to_halt_mode(mode_model):
+    page, _ = mode_model
+    return ModeModel(page, 'halted')
+
+
+def to_run_mode(mode_model):
+    page, _ = mode_model
+    return ModeModel(page, '< *  >')
+
+
+def to_step_mode(mode_model):
+    page, _ = mode_model
+    return ModeModel(page, '<step>')
+
+
+def to_reset_mode(mode_model):
+    page, _ = mode_model
+    return ModeModel(page, 'reset*')
+
+
+def to_upload_mode(model_model):
+    page, _ = model_model
+    return ModeModel(page, 'upload')
 
 
 _stack = []

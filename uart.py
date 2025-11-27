@@ -2,13 +2,12 @@ import re
 import io
 import serial
 
-from data import Page
-
 
 _rx_buffer = b''
+_tx_buffer = b''
 
 
-def next_page(ndx, fp):
+def uart_recv(fp):
     global _rx_buffer
 
     i = 0
@@ -20,10 +19,10 @@ def next_page(ndx, fp):
         _rx_buffer += data
 
     if i == 0:
-        return 'none', None
+        return 'none', 0
 
     if not _rx_buffer.endswith(b'\n'):
-        return 'recv', None
+        return 'none', i
 
     state = 'init'
     pc = 'N/A'
@@ -48,7 +47,52 @@ def next_page(ndx, fp):
     
     _rx_buffer = b''
 
-    return 'emit', Page(ndx + 1, pc, regs)
+    return 'page', (pc, regs)
+
+
+def send_halt():
+    global _tx_buffer
+    _tx_buffer += b'H\n'
+
+
+def send_start():
+    global _tx_buffer
+    _tx_buffer += b'Z\n'
+
+
+def send_step():
+    global _tx_buffer
+    _tx_buffer += b'S1\n'
+
+
+def send_cycle():
+    global _tx_buffer
+    _tx_buffer += b'S>\n'
+
+
+def send_reset():
+    global _tx_buffer
+    _tx_buffer += b'R\n'
+
+
+def send_prog(dump):
+    global _tx_buffer
+    instrs = [instr.upper() for instr in dump.split('\n')]
+    stream = ','.join(instrs)
+    cmd = f'[{stream}]\n'
+    _tx_buffer += bytes(cmd, encoding='ascii')
+
+
+def uart_emit(fp, max_chunk_len=128):
+    global _tx_buffer
+    chunk, tail = _tx_buffer[:max_chunk_len], _tx_buffer[max_chunk_len:]
+    _tx_buffer = tail
+    if chunk:
+        out_len = fp.write(chunk)
+        fp.flush()
+        return out_len
+    
+    return 0
 
 
 def null_uart():

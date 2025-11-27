@@ -1,0 +1,74 @@
+[readme]
+■ WELCOME
+  This is a very short guide to using rivctl.
+  
+  You can scroll through this article with
+  [↑↓] keys. To exit hit [Enter] or [Esc].
+
+■ PAGES
+  When rivctl captures a debug packet it creates
+  a new "page" and appends it to the database
+  Pages are important because they fit on the
+  screen neatly and are much easier to search
+  through than in a simple serial console (debug
+  packets are not indexed).
+
+  You can move between pages using [←→] keys.
+  If you wish to see only the latest package hit
+  a [l] key. Also you can navigate to specific
+  page by pressing [n] key and entering your
+  desired page number.
+
+  There are some other things you can do with
+  pages - they will be listed and explained in
+  sections below.
+
+■ TOPBAR
+  ~ light-blue bar near the top of the screen ~
+  Topbar is used for displaying actions relevant
+  to current pane. Here is a short list of them:
+  Tab   switch between 3 panes: regfile, datamem
+        & progmem - currently selected pane will
+        become highlighted (key: [Tab])
+  Nav   jump to specified page. (key: [n])
+  ▲▼    pane can be scrolled with [↑↓] keys
+  Find  find an entry in the memory (key: [f])
+
+  Apart from that, there is a simple page count
+  with current page and a mode display. You can
+  move between pages with left & right arrow
+  keys. This will change mode from "latest" to
+  "scroll", jumping to specific page will cause
+  the same effect.
+
+■ TASKBAR
+  ~ black bar near the bottom of the screen ~
+  Taskbar consists of two parts. A small list of
+  most basic actions will always be displayed.
+
+  These actions are:
+  [h]   display this help message
+  [s]   save all collected pages as a sqlite3 .db
+        file to a specified location
+  [l]   always display latest page - you can break
+        out of this mode by pressing left or right
+        arrow key or by jumping to a specific page
+  [q]   quit this program.
+
+  Other than that, an UART status is shown on the
+  right side of taskbar. Upon receiving data from
+  the port a green indicator will flash briefly.
+  Yellow indicator is always lit. The last element
+  is an abbreviated device name.
+
+  
+      Thank you for using rivctl!
+        Szymon Miekina, Nov 2025
+.
+[no_file_dev]
+Path to capture file or serial console was not passed.
+To capture debug packets use:
+  python rivctl.py /dev/ttyUSB0
+Or view existing capture:
+  python rivctl.py -r capture.db
+.
