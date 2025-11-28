@@ -192,7 +192,8 @@ def loop(filename, is_tty, stdscr):
                         uart_model = reset_rx(uart_model)
                 elif what == 'page':
                     assert isinstance(value, tuple)
-                    page = Page(page_model.top, *value)
+                    pc, regs = value
+                    page = Page(page_model.top + 1, pc, regs)
                     save_one(db, page)
                     page_model = upsert_page(page_model, page)
 
