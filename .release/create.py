@@ -36,7 +36,7 @@ def update_files(where, tag, lang):
     print(_hi('Update msg_.py'))
     with open(msg_where, encoding='utf-8') as src_fp:
         msgs = lmsg.read_local_msg(src_fp)
-        msgs['readme'] += f'        rivctl.py {tag}-{lang}\n'
+        msgs['readme'] += f'\n        rivctl.py {tag}-{lang}\n'
         with open(f'{where}/msg_.py', 'w', encoding='utf-8') as py_fp:
             lmsg.write_local_msg_py(py_fp, msgs)
 

@@ -1,5 +1,6 @@
 import curses
 import signal
+import pathlib
 import sys
 
 
@@ -25,21 +26,21 @@ def color_init():
 
 
 # colors!
-_whcy = def_color(curses.COLOR_WHITE, curses.COLOR_CYAN)
-_whbl = def_color(curses.COLOR_WHITE, curses.COLOR_BLUE)
-_whbk = def_color(curses.COLOR_WHITE, curses.COLOR_BLACK)
-_yebl = def_color(curses.COLOR_YELLOW, curses.COLOR_BLUE)
-_yebk = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
-_cywh = def_color(curses.COLOR_CYAN, curses.COLOR_WHITE)
-_cybk = def_color(curses.COLOR_CYAN, curses.COLOR_BLACK)
-_blwh = def_color(curses.COLOR_BLUE, curses.COLOR_WHITE)
-_blcy = def_color(curses.COLOR_BLUE, curses.COLOR_CYAN)
-_grbk = def_color(curses.COLOR_GREEN, curses.COLOR_BLACK)
-_mabk = def_color(curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-_bkwh = def_color(curses.COLOR_BLACK, curses.COLOR_WHITE)
-_bkcy = def_color(curses.COLOR_BLACK, curses.COLOR_CYAN)
-_bkgr = def_color(curses.COLOR_BLACK, curses.COLOR_GREEN)
-_bkbk = def_color(curses.COLOR_BLACK, curses.COLOR_BLACK)
+whcy = def_color(curses.COLOR_WHITE, curses.COLOR_CYAN)
+whbl = def_color(curses.COLOR_WHITE, curses.COLOR_BLUE)
+whbk = def_color(curses.COLOR_WHITE, curses.COLOR_BLACK)
+yebl = def_color(curses.COLOR_YELLOW, curses.COLOR_BLUE)
+yebk = def_color(curses.COLOR_YELLOW, curses.COLOR_BLACK)
+cywh = def_color(curses.COLOR_CYAN, curses.COLOR_WHITE)
+cybk = def_color(curses.COLOR_CYAN, curses.COLOR_BLACK)
+blwh = def_color(curses.COLOR_BLUE, curses.COLOR_WHITE)
+blcy = def_color(curses.COLOR_BLUE, curses.COLOR_CYAN)
+grbk = def_color(curses.COLOR_GREEN, curses.COLOR_BLACK)
+mabk = def_color(curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+bkwh = def_color(curses.COLOR_BLACK, curses.COLOR_WHITE)
+bkcy = def_color(curses.COLOR_BLACK, curses.COLOR_CYAN)
+bkgr = def_color(curses.COLOR_BLACK, curses.COLOR_GREEN)
+bkbk = def_color(curses.COLOR_BLACK, curses.COLOR_BLACK)
 
 # horizontal window padding/button spacing
 _hp = 2
@@ -68,7 +69,7 @@ def _box(win, char, pos, size, color):
     win.attroff(color)
 
 
-def _window(title, sz, pos=(0, 0), keypad=False, fg=_bkwh, bg=_whbk):
+def _window(title, sz, pos=(0, 0), keypad=False, fg=bkwh):
     w, h = sz
     x, y = pos
     try:
@@ -79,7 +80,6 @@ def _window(title, sz, pos=(0, 0), keypad=False, fg=_bkwh, bg=_whbk):
         win.keypad(keypad)
         win.bkgd(' ', fg())
         if title:
-            # _box(win, ' ', (0, 0), (w, 1), bg())
             _txt(win, f' {title} ', (_hp, 0), fg())
         return win
     except CursesError:
@@ -103,7 +103,7 @@ def _draw_btns(win, btns, y, sel):
     wbtn = sum([len(label) + _hp for label in labels])
     x = w - wbtn
     for i, label in enumerate(labels):
-        color = _cybk() if sel == i else _cywh()
+        color = cybk() if sel == i else cywh()
         _txt(win, label, (x, y), color)
         x += len(label) + _hp
 
@@ -113,7 +113,7 @@ def _draw_input(win, text, y, focus):
     wi = w - _hp*2
     cut = text[-wi+1:]
 
-    color = _cybk() if focus else _whbk()
+    color = cybk() if focus else whbk()
     pos = (_hp, y)
     _box(win, ' ', pos, (wi, 1), color)
     _txt(win, cut, pos, color)
@@ -155,7 +155,7 @@ def _toast(title, message, hx=0):
     h = len(lines) + 5 + hx
     win = _window(title, (w, h), (2, 2), keypad=True)
     for i, line in enumerate(lines):
-        _txt(win, line, (_hp, i + 2), _bkwh())
+        _txt(win, line, (_hp, i + 2), bkwh())
 
     return win
 
@@ -250,16 +250,13 @@ def dialog(title, message, btns):
     return redraw, update, close
 
 
-def pager(title, text, sz, btns):
+def pager(title, text, sz, btns, fg=bkwh):
     vw, vh = sz
     lines = text.split('\n')
     bottom = len(lines) - vh
-    if bottom <= 0:
-        # doesn't need scrolling to fit
-        return popup(title, text, btns)
 
     # empty message, will be drawn later
-    win = _toast(title, ' ' * vw, vh - 1)
+    win = _window(title, (vw + 3, vh + 5), (2, 2), keypad=True)
     w, h = _window_sz(win)
 
     accept_ev = False
@@ -269,9 +266,13 @@ def pager(title, text, sz, btns):
     def redraw():
         for i in range(row, row+vh):
             y = i - row + 2
-            _box(win, ' ', (_hp, y), (vw, 1), _bkwh())
-            _txt(win, lines[i][:vw-2], (_hp, y), _bkwh())
-        _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, _bkwh())
+            _box(win, ' ', (_hp, y), (vw - 1, 1), fg())
+            try:
+                _txt(win, lines[i][:vw - 6], (_hp, y), fg())
+            except IndexError:
+                pass
+        if bottom > 0:
+            _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, fg())
         _draw_btns(win, btns, h - 2, btn_sel)
         win.refresh()
 
@@ -307,7 +308,7 @@ def menu(pos, acts):
     w = max([len(text) for text, _ in acts]) + 2
     h = len(acts) + 2
 
-    win = _window(None, (w, h), pos, fg=_whcy, bg=_cywh)
+    win = _window(None, (w, h), pos, fg=whcy)
 
     accept_ev = False
     act_sel = 0
@@ -317,9 +318,9 @@ def menu(pos, acts):
             if text == '-':
                 
                 line = '─' * (w - 2)
-                _txt(win, f'├{line}┤', (0, y + i), _whcy())
+                _txt(win, f'├{line}┤', (0, y + i), whcy())
             else:
-                color = _cybk() if i == sel else _whcy()
+                color = cybk() if i == sel else whcy()
                 _txt(win, text, (1, y + i), color)
 
     def _is_sel_hline(sel):
@@ -359,8 +360,81 @@ def menu(pos, acts):
     return redraw, update, close
 
 
+def picker(title, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
+    vw, vh = sz
+
+    # empty message, will be drawn later
+    win = _window(title, (vw + 3, vh + 5), (2, 2), keypad=True)
+    w, h = _window_sz(win)
+
+    accept_ev = False
+    row = 0
+    sel = 0
+
+    path = pathlib.Path(init)
+    items = []
+
+    def redraw():
+        bottom = len(items) - vh
+        for i in range(row, row+vh):
+            y = i - row + 2
+            _box(win, ' ', (_hp, y), (vw - 1, 1), fc())
+            try:
+                item = items[i]
+                name = f'-{item.name}/' if item.is_dir() else f'-{item.name}'
+                if i == sel:
+                    _txt(win, name[:vw-6], (_hp, y), sc())
+                else:
+                    color = dc() if item.is_dir() else fc()
+                    _txt(win, name[:vw-6], (_hp, y), color)
+            except IndexError:
+                pass
+        if bottom > 0:
+            _draw_scroll_bar(win, (w - 3, 2), vh, 1, row / bottom, fc())
+        win.refresh()
+
+    def _path_to_items(p):
+        parent = p.joinpath(pathlib.Path('..'))
+        items = list(p.glob('*'))
+        dirs = filter(lambda item: item.is_dir(), items)
+        files = filter(lambda item: not item.is_dir(), items)
+        return [parent] + list(dirs) + list(files)
+
+    def update(poll):
+        nonlocal path, items, accept_ev, row, sel
+        ev, arg = poll
+        items = _path_to_items(path)
+        bottom = len(items) - vh
+        if not accept_ev:
+            if ev == 'empty':
+                accept_ev = True
+        elif ev == 'move':
+            assert isinstance(arg, tuple)
+            _, my = arg
+            max_sel = len(items) - 1
+            cnt = vh // 2
+            sel = max(min(sel - my, max_sel), 0)
+            row = max(min(sel - cnt, bottom), 0)
+        elif ev == 'key':
+            assert isinstance(arg, str)
+            if arg == 'esc':
+                return 'quit'
+            elif arg == 'enter':
+                item = items[sel]
+                if item.is_dir():
+                    path = item
+                    return 'ok'
+                return act(item)
+        return 'ok'
+
+    def close():
+        win.erase()    
+
+    return redraw, update, close
+
+
 def abort(win, title, message):
-    _bg(win, _whbl())
+    _bg(win, whbl())
 
     try:
         redraw, update, _ = popup(title, message, [('exit', None)])
@@ -388,7 +462,7 @@ _regs_names = [
 
 
 def main_view(win, page, tab):
-    _bg(win, _whbl())
+    _bg(win, whbl())
 
     rx = 2
     mx = 38
@@ -396,24 +470,24 @@ def main_view(win, page, tab):
 
     if page:
         regs_vals = ['00000000'] + page.regs.split(',')[:31]
-        _txt(win, 'pc    ', (rx + 1, oy), _yebl())
-        _txt(win, f'{page.pc:8}', (rx + 7, oy), _whbl())
+        _txt(win, 'pc    ', (rx + 1, oy), yebl())
+        _txt(win, f'{page.pc:8}', (rx + 7, oy), whbl())
         for i, reg_name, reg_val in zip(range(32), _regs_names, regs_vals):
             x = (0 if i < 16 else 16) + rx + 1
             y = i % 16 + oy + 2
-            _txt(win, f'{reg_name:6}', (x, y), _yebl())
-            _txt(win, f'{reg_val:8}', (x + 6, y), _whbl())
+            _txt(win, f'{reg_name:6}', (x, y), yebl())
+            _txt(win, f'{reg_val:8}', (x + 6, y), whbl())
     else:
-        _txt(win, 'no pages yet', (rx + 2, 6), _whbl())
+        _txt(win, 'no pages yet', (rx + 2, 6), whbl())
 
     if page:
         data_vals = ['00000000'] * 32
         for i, data_val in zip(range(32), data_vals):
             x = i % 4 * 10 + mx + 1
             y = i // 4 + oy
-            _txt(win, f'{data_val:8}', (x, y), _whbl())
+            _txt(win, f'{data_val:8}', (x, y), whbl())
     else:
-        _txt(win, 'no pages yet', (mx + 2, 6), _whbl())
+        _txt(win, 'no pages yet', (mx + 2, 6), whbl())
 
     if page:
         prog_vals = [
@@ -427,29 +501,29 @@ def main_view(win, page, tab):
             if prog_val:
                 paddr, instr = prog_val
                 mnemo, params = instr.split(' ', 1)
-                _txt(win, f'{paddr:8}', (mx + 1, y), _yebl())
-                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), _whbl())
+                _txt(win, f'{paddr:8}', (mx + 1, y), yebl())
+                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), whbl())
             else:
-                _txt(win, '--------', (mx + 1, y), _yebl())
-                _txt(win, '-', (mx + 11, y), _whbl())
+                _txt(win, '--------', (mx + 1, y), yebl())
+                _txt(win, '-', (mx + 11, y), whbl())
     else:
-        _txt(win, 'no pages yet', (mx + 2, 16), _whbl())
+        _txt(win, 'no pages yet', (mx + 2, 16), whbl())
         
     _draw_outline(
         win, 
-        (rx, 4), (32, 18), _whbl(), 
-        ('regfile', _blwh() if tab == 0 else None)
+        (rx, 4), (32, 18), whbl(), 
+        ('regfile', blwh() if tab == 0 else None)
     )
     _draw_outline(
         win, 
-        (mx, 4), (40, 8), _whbl(),
-        ('datamem', _blwh() if tab == 1 else None), 
+        (mx, 4), (40, 8), whbl(),
+        ('datamem', blwh() if tab == 1 else None), 
         ('offset: 00000000' if page else 'offset:      N/A', None) 
     )
     _draw_outline(
         win, 
-        (mx, 14), (40, 8), _whbl(), 
-        ('progmem', _blwh() if tab == 2 else None),
+        (mx, 14), (40, 8), whbl(), 
+        ('progmem', blwh() if tab == 2 else None),
         ('offset: 00000044' if page else 'offset:      N/A', None)
     )
 
@@ -458,57 +532,57 @@ def task_bar(win, uart_model):
     w, h = _window_sz(win)
     y = h - 1
 
-    _box(win, ' ', (0, y), (w, 1), _whbk())
+    _box(win, ' ', (0, y), (w, 1), whbk())
 
     if uart_model.dev:
         short_dev = uart_model.dev.split('/')[-1]
         ox = len(short_dev)
         wo = w - ox
-        _txt(win, '■', (wo - 11, y), _bkbk() if uart_model.rxc & 1 else _grbk())
-        _txt(win, '■', (wo - 10, y), _bkbk() if uart_model.txc & 1 else _yebk())
-        _txt(win, f' <-> {short_dev}', (wo - 9, y), _whbk())
+        _txt(win, '■', (wo - 11, y), bkbk() if uart_model.rxc & 1 else grbk())
+        _txt(win, '■', (wo - 10, y), bkbk() if uart_model.txc & 1 else yebk())
+        _txt(win, f' <-> {short_dev}', (wo - 9, y), whbk())
     else:
         msg = ' <-> <nil>'
         ox = len(msg)
         wo = w - ox
-        _txt(win, f' {msg} ', (wo - 9, y), _whbk())
+        _txt(win, f' {msg} ', (wo - 9, y), whbk())
         
-    _txt(win, ' h ', (0, y), _whbk())
-    _txt(win, 'Halt   ', (3, y), _bkcy())  
-    _txt(win, ' z ', (10, y), _whbk())
-    _txt(win, 'Run    ', (13, y), _bkcy())
-    _txt(win, ' a ', (20, y), _whbk())
-    _txt(win, 'Cycle  ', (23, y), _bkcy())
-    _txt(win, ' s ', (30, y), _whbk())
-    _txt(win, 'Step   ', (33, y), _bkcy())
-    _txt(win, ' r ', (40, y), _whbk())
-    _txt(win, 'Reset  ', (43, y), _bkcy())
+    _txt(win, ' h ', (0, y), whbk())
+    _txt(win, 'Halt   ', (3, y), bkcy())  
+    _txt(win, ' z ', (10, y), whbk())
+    _txt(win, 'Run    ', (13, y), bkcy())
+    _txt(win, ' a ', (20, y), whbk())
+    _txt(win, 'Cycle  ', (23, y), bkcy())
+    _txt(win, ' s ', (30, y), whbk())
+    _txt(win, 'Step   ', (33, y), bkcy())
+    _txt(win, ' r ', (40, y), whbk())
+    _txt(win, 'Reset  ', (43, y), bkcy())
 
 
 _ctl_mode_colors = {
-    'ready*': _yebk,
-    'halted': _mabk,
-    'reset*': _yebk,
-    '<step>': _cybk,
-    '<*   >': _grbk,
-    '< *  >': _grbk,
-    '<  * >': _grbk,
-    '<   *>': _grbk,
+    'ready*': yebk,
+    'halted': mabk,
+    'reset*': yebk,
+    '<step>': cybk,
+    '<*   >': grbk,
+    '< *  >': grbk,
+    '<  * >': grbk,
+    '<   *>': grbk,
 }
 
 
 def top_bar(win, mode_model, page_model, acts):
     w, _ = _window_sz(win)
-    _box(win, ' ', (0, 0), (w, 1), _bkcy())
+    _box(win, ' ', (0, 0), (w, 1), bkcy())
     page_desc = f'page {page_model.now:4}/{page_model.top:4}'
     ox = len(page_desc)
-    _txt(win, page_desc, (w - ox - 10, 0), _bkcy())
+    _txt(win, page_desc, (w - ox - 10, 0), bkcy())
 
-    color = _ctl_mode_colors.get(mode_model.ctl, _cybk)()
+    color = _ctl_mode_colors.get(mode_model.ctl, cybk)()
     _txt(win, f' {mode_model.ctl} ', (w - 8, 0), color)
 
     def _draw_btn(text, x):
-        _txt(win, text, (x + 1, 0), _bkcy())
+        _txt(win, text, (x + 1, 0), bkcy())
         return x + len(text) + 2
 
     x = 1

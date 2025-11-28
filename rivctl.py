@@ -9,19 +9,21 @@ from data import (
     open_db, save_db, save_one, find_by_ndx, count
 )
 from term import (
-    popup, dialog, pager, menu, abort, poll_user, ensure_vga, main_view, 
-    task_bar, top_bar, run
+    popup, dialog, pager, menu, picker, abort, poll_user, ensure_vga, 
+    main_view, task_bar, top_bar, run,
+    whbk
 )
 from view import (
     UartModel, PageModel, ModeModel,
     flash_rx, reset_rx, flash_tx, reset_tx, upsert_page, follow_page, 
     move_to_page, jump_to_page, show, has_overlays, update_overlay, 
-    update_mode, to_halt_mode, to_run_mode, to_step_mode, to_reset_mode, to_upload_mode
+    to_halt_mode, to_run_mode, to_step_mode, to_reset_mode, to_upload_mode,
+    update_mode
 )
-from msg_ import (
-    readme_, no_file_dev_
+from file import (
+    read_prog, pad_prog
 )
-
+import msg_ as m
 
 _acts = [
     ['File', 'Page'],
@@ -30,16 +32,8 @@ _acts = [
 ]
 
 
-def see_cmdline_help():
-    print(
-        'rivctl.py [-h] [-r] FILE\n'
-        '  control panel for debuging RISCV MCU\n'
-        'options:\n'
-        '  -h  show this help message\n'
-        '  -r  indicates the FILE refers to saved .db file, otherwise\n'
-        '      FILE is assumed to refer to serial console eg. /dev/ttyUSB0\n'
-        '      on Linux or COM3 on Windows'
-    )
+def see_usage():
+    print(m.usage_)
 
 
 def parse_args():
@@ -48,7 +42,7 @@ def parse_args():
     _, *args = sys.argv
     for arg in args:
         if arg == '-h':
-            see_cmdline_help()
+            see_usage()
             sys.exit(0)
         if arg == '-r':
             is_tty = False
@@ -80,8 +74,8 @@ def loop(filename, is_tty, stdscr):
         if not filename:
             abort(
                 stdscr,
-                'No File/Device',
-                no_file_dev_
+                m.no_file_dev_,
+                m.no_file_dev_text_
             )
 
         with open_uart(device) as uart, open_db(stored) as db:
@@ -102,8 +96,8 @@ def loop(filename, is_tty, stdscr):
                         page_model = jump_to_page(page_model, int(page))
                     except ValueError:
                         show(popup(
-                            'bad page',
-                            'page index should be an integer',
+                            m.bad_page_,
+                            m.bad_page_text_,
                             [('ok', None)]
                         ))
                         return 'ok'
@@ -112,36 +106,78 @@ def loop(filename, is_tty, stdscr):
 
             def show_quit():
                 show(popup(
-                    'Quit',
-                    ' Really quit?  ',
-                    [('no', None), ('yes', lambda _: sys.exit(0))]
+                    m.quit_,
+                    m.quit_text_,
+                    [(m.no_, None), (m.yes_, lambda _: sys.exit(0))]
                 ))
 
             def show_help():
                 show(pager(
-                    'Help',
-                    readme_,
-                    (54, 15),
+                    m.help_,
+                    m.readme_,
+                    (53, 15),
                     [('ok', None)]
                 ))
 
             def show_save():
                 show(dialog(
-                    'Save As',
-                    'Enter session filename:                 ',
-                    [('cancel', None), ('save', save_to_db)]
+                    m.save_as_,
+                    m.save_as_text_,
+                    [(m.cancel_, None), ('save', save_to_db)]
                 ))
             
             def show_jump():
                 show(dialog(
-                    'Jump Tos',
-                    'Navigate to index:',
-                    [('cancel', None), ('go', go_to_page)]
+                    m.jump_to_,
+                    m.jump_to_text_,
+                    [(m.cancel_, None), ('go', go_to_page)]
                 ))
 
             def to_latest():
                 nonlocal page_model
                 page_model = follow_page(page_model)
+
+            def show_upload_bad_file():
+                show(popup(
+                    m.bad_prog_file_,
+                    m.bad_prog_file_text_,
+                    [('ok', None)]
+                ))
+            
+            def show_upload_preview(dump):
+                instrs = list(dump)
+
+                text = '\n'.join(
+                    [f'{l:>6}:  {c}    {s}' for l, c, s in instrs] +
+                    ['.']
+                )
+
+                def upload(_):
+                    nonlocal mode_model
+                    mode_model = to_upload_mode(mode_model)
+                    send_prog(pad_prog(instrs))
+                    return 'quit'
+                
+                show(pager(
+                    m.upload_preview_,
+                    text,
+                    (73, 15),
+                    [(m.cancel_, None), ('upload', upload)], 
+                    whbk
+                ))
+
+            def show_upload():
+                def parse_program(path):
+                    try:
+                        show_upload_preview(read_prog(path))
+                    except IOError:
+                        show_upload_bad_file()
+
+                show(picker(
+                    m.upload_,
+                    (53, 5),
+                    parse_program
+                ))
 
             while True:
                 ensure_vga(stdscr)
@@ -179,8 +215,7 @@ def loop(filename, is_tty, stdscr):
                     if arg == 'S':
                         show_save()
                     if arg == 'U':
-                        # show_upload()
-                        pass
+                        show_upload()
                     if arg == 'N':
                         show_jump()
                     if arg == 'L':
@@ -194,19 +229,19 @@ def loop(filename, is_tty, stdscr):
                         show(menu(
                             (1, 1), 
                             [
-                                ('Save As ...', lambda _: show_save()),
-                                ('Upload ...', None),
+                                (f'{m.save_as_} ...', lambda _: show_save()),
+                                (f'{m.upload_} ...', lambda _: show_upload()),
                                 ('-', None),
-                                ('Help', lambda _: show_help()),
-                                ('Quit', lambda _: show_quit())
+                                (f'{m.help_}', lambda _: show_help()),
+                                (f'{m.quit_}', lambda _: show_quit())
                             ]
                         ))
                     if arg == 'P':
                         show(menu(
                             (7, 1),
                             [
-                                ('To Page ...', lambda _: show_jump()),
-                                ('Latest', lambda _: to_latest())
+                                (f'{m.to_page_} ...', lambda _: show_jump()),
+                                (f'{m.latest_}', lambda _: to_latest())
                             ]
                         ))
                     if arg == 'h':
@@ -237,7 +272,7 @@ def loop(filename, is_tty, stdscr):
     except OSError as e:
         abort(
             stdscr,
-            'fatal error', 
+            m.fatal_error_, 
             str(e).lower()
         )
 

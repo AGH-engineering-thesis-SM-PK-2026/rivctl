@@ -77,7 +77,7 @@ def send_reset():
 
 def send_prog(dump):
     global _tx_buffer
-    instrs = [instr.upper() for instr in dump.split('\n')]
+    instrs = [instr.upper() for instr in dump]
     stream = ','.join(instrs)
     cmd = f'[{stream}]\n'
     _tx_buffer += bytes(cmd, encoding='ascii')

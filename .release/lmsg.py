@@ -7,7 +7,10 @@ def read_local_msg(fp):
     key = None
     for line in fp.readlines():
         item = line.rstrip()
-        if item == '.':
+        if item == '..':
+            key = None
+        elif item == '.':
+            msgs[key] = msgs[key].rstrip('\n')
             key = None
         elif item.startswith('#'):
             # a comment

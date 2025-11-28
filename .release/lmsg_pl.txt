@@ -2,7 +2,7 @@
 ■ WITAMY
   Ten krótki przewodnik ma za zadanie oprowadzić
   Cię po programie rivctl.
-  
+
   Użyj klawiszy [↑↓] aby poruszać się po artykule. 
   Aby wrócić do programu wciśnij [Enter] lub [Esc].
 
@@ -66,10 +66,82 @@
       Dzięki za skorzystanie z rivctl!
         Szymon Miękina, Nov 2025
 .
+[usage]
+rivctl.py [-h] [-r] FILE
+  panel sterowania dla RISCV MCU
+opcje:
+  -h  pokaż tą wiadomość pomocy
+  -r  wskazuje, że plik FILE odnosi się do pliku .db, w przeciwnym
+      razie program zakłada, że FILE jest urządzeniem UART np. /dev/ttyUSB0
+      na Linuxie lub COM3 na Windowsie
+.
 [no_file_dev]
-Path to capture file or serial console was not passed.
-To capture debug packets use:
+Brak Pliku/Konsoli
+.
+[no_file_dev_text]
+Nie podano ścieżki do pliku sesji lub urządzenia kom. szer.
+Aby zacząć przechwycać pakiety/wysyłać komendy:
   python rivctl.py /dev/ttyUSB0
-Or view existing capture:
+Aby wyświetlić zrzut sesji:
   python rivctl.py -r capture.db
+.
+[bad_page]
+Skocz Do
+.
+[bad_page_text]
+Strona nie istnieje.
+.
+[quit]
+Wyjdź
+.
+[help]
+Pomoc
+.
+[quit_text]
+Czy chcesz wyjść?
+.
+[save_as]
+Zapisz Jako
+.
+[save_as_text]
+Wpisz nazwę pliku sesji:                 
+.
+[jump_to]
+Skocz Do
+.
+[jump_to_text]
+Przejdź do strony:
+.
+[bad_prog_file]
+Błąd Wgrywania
+.
+[bad_prog_file_text]
+Plik program nie został załadowany poprawnie.
+.
+[upload_preview]
+Podgląd Programu
+.
+[upload]
+Wgraj
+.
+[to_page]
+Do Strony
+.
+[latest]
+Ostatni
+.
+[fatal_error]
+Błąd Krytyczny
+.
+[cancel]
+anuluj
+.
+[ok]
+ok
+.
+[yes]
+tak
+.
+[no]
+nie
 .
