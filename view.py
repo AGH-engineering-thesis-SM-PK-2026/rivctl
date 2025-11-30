@@ -4,7 +4,6 @@ from collections import namedtuple
 UartModel = namedtuple('UartModel', 'rxc txc dev')
 PageModel = namedtuple('PageModel', 'now top follow')
 ModeModel = namedtuple('ModeModel', 'page ctl')
-InstrModel = namedtuple('InstrModel', 'loc code src')
 
 
 def flash_rx(uart_model):

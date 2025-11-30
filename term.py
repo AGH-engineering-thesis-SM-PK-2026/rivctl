@@ -461,7 +461,7 @@ _regs_names = [
 ]
 
 
-def main_view(win, page, tab):
+def main_view(win, page, prog, tab):
     _bg(win, whbl())
 
     rx = 2
@@ -469,7 +469,7 @@ def main_view(win, page, tab):
     oy = 4
 
     if page:
-        regs_vals = ['00000000'] + page.regs.split(',')[:31]
+        regs_vals = page.regs.split(',')[:32]
         _txt(win, 'pc    ', (rx + 1, oy), yebl())
         _txt(win, f'{page.pc:8}', (rx + 7, oy), whbl())
         for i, reg_name, reg_val in zip(range(32), _regs_names, regs_vals):
@@ -490,19 +490,17 @@ def main_view(win, page, tab):
         _txt(win, 'no pages yet', (mx + 2, 6), whbl())
 
     if page:
-        prog_vals = [
-            ('00000044', 'addi x11, x0, 20'),
-            ('00000048', 'lui x11 1'),
-            ('0000004c', 'addi x11, x11, 4'),
-            ('00000050', 'sw x11, 0(x12)')
-        ] + [None] * 5
-        for i, prog_val in zip(range(8), prog_vals):
+        ndx = int(page.pc, 16) // 4;
+        for i in range(8):
             y = i + oy + 10
-            if prog_val:
-                paddr, instr = prog_val
-                mnemo, params = instr.split(' ', 1)
-                _txt(win, f'{paddr:8}', (mx + 1, y), yebl())
-                _txt(win, f'{mnemo:6}{params}', (mx + 11, y), whbl())
+            if ndx + i < len(prog):
+                prog_val = prog[ndx + i]
+                if (i == 0):
+                    _txt(win, '>', (mx, y), yebl())
+                _txt(win, f'{prog_val.loc:>08}  ', (mx + 1, y), yebl())
+                _txt(win, f'{prog_val.src:28}', (mx + 11, y), whbl())
+
+                # _txt(win, f'{mnemo:6}{params}', (mx + 11, y), whbl())
             else:
                 _txt(win, '--------', (mx + 1, y), yebl())
                 _txt(win, '-', (mx + 11, y), whbl())

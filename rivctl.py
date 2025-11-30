@@ -5,8 +5,8 @@ from uart import (
     send_halt, send_start, send_step, send_cycle, send_reset, send_prog
 )
 from data import (
-    Page,
-    open_db, save_db, save_one, find_by_ndx, count
+    Page, Instr,
+    open_db, save_db, save_one, find_all, find_by_ndx, drop_all, count
 )
 from term import (
     popup, dialog, pager, menu, picker, abort, poll_user, ensure_vga, 
@@ -21,7 +21,7 @@ from view import (
     to_upload_mode, update_mode
 )
 from file import (
-    read_prog, pad_prog
+    read_prog #, pad_prog
 )
 import msg_ as m
 
@@ -155,7 +155,10 @@ def loop(filename, is_tty, stdscr):
                 def upload(_):
                     nonlocal mode_model
                     mode_model = to_upload_mode(mode_model)
-                    send_prog(pad_prog(instrs))
+                    drop_all(db, Instr)
+                    for instr in instrs:
+                        save_one(db, instr)
+                    send_prog([instr.code for instr in instrs])
                     return 'quit'
                 
                 show(pager(
@@ -191,9 +194,9 @@ def loop(filename, is_tty, stdscr):
                     else:
                         uart_model = reset_rx(uart_model)
                 elif what == 'page':
-                    assert isinstance(value, tuple)
-                    pc, regs = value
-                    page = Page(page_model.top + 1, pc, regs)
+                    assert isinstance(value, str)
+                    pc, regs = value.split(',', 1)
+                    page = Page(page_model.top + 1, pc, f'00000000,{regs}')
                     save_one(db, page)
                     page_model = upsert_page(page_model, page)
 
@@ -260,14 +263,14 @@ def loop(filename, is_tty, stdscr):
                     if arg == 'r':
                         mode_model = to_reset_mode(mode_model)
                         send_reset()
-                    main_view(stdscr, page, tab)
+                    main_view(stdscr, page, find_all(db, Instr), tab)
                 elif ev == 'move':
                     assert isinstance(arg, tuple)
                     mx, _ = arg
                     page_model = move_to_page(page_model, mx)
-                    main_view(stdscr, page, tab)
+                    main_view(stdscr, page, find_all(db, Instr), tab)
                 else:
-                    main_view(stdscr, page, tab)
+                    main_view(stdscr, page, find_all(db, Instr), tab)
                 redraw_static()
                 
     except OSError as e:

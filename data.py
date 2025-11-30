@@ -5,12 +5,12 @@ from contextlib import closing
 
 
 Page = namedtuple('Page', 'ndx pc regs')
+Instr = namedtuple('Instr', 'loc code src')
 Diff = namedtuple('Diff', 'ndx regs')
 
 _EntSpec = namedtuple(
     '_EntSpec',
-    'table fields init find_all find_ndx '
-    'count save'
+    'table fields init find_all find_ndx count save drop_all drop_ndx'
 )
 
 
@@ -32,8 +32,15 @@ def _create_spec(con, ent_type):
     find_ndx = f'SELECT {field_def} FROM {table} WHERE ndx = ?'
     count = f'SELECT COUNT(*) FROM {table}'
     save = f'INSERT INTO {table} VALUES ({field_arg})'
+    drop_all = f'DELETE FROM {table}'
+    drop_ndx = f'DELETE FROM {table} WHERE ndx = ?'
 
-    ent_spec = _EntSpec(table, fields, init, find_all, find_ndx, count, save)
+    ent_spec = _EntSpec(
+        table, fields, init, 
+        find_all, find_ndx, 
+        count, save,
+        drop_all, drop_ndx
+    )
 
     cur = con.cursor()
     cur.execute(ent_spec.init)
@@ -47,6 +54,22 @@ def save_one(con, ent):
 
     cur = con.cursor()
     cur.execute(ent_spec.save, tuple(ent))
+    con.commit()
+
+
+def drop_all(con, ent_type):
+    ent_spec = _get_spec(con, ent_type)
+
+    cur = con.cursor()
+    cur.execute(ent_spec.drop_all)
+    con.commit()
+
+
+def drop_by_ndx(con, ent_type, ndx):
+    ent_spec = _get_spec(con, ent_type)
+
+    cur = con.cursor()
+    cur.execute(ent_spec.drop_ndx, (ndx,))
     con.commit()
 
 
