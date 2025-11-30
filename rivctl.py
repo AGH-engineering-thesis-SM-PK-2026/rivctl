@@ -17,8 +17,8 @@ from view import (
     UartModel, PageModel, ModeModel,
     flash_rx, reset_rx, flash_tx, reset_tx, upsert_page, follow_page, 
     move_to_page, jump_to_page, show, has_overlays, update_overlay, 
-    to_halt_mode, to_run_mode, to_step_mode, to_reset_mode, to_upload_mode,
-    update_mode
+    to_halt_mode, to_run_mode, to_1step_mode, to_cycle_mode, to_reset_mode, 
+    to_upload_mode, update_mode
 )
 from file import (
     read_prog, pad_prog
@@ -252,10 +252,10 @@ def loop(filename, is_tty, stdscr):
                         mode_model = to_run_mode(mode_model)
                         send_start()
                     if arg == 'a':
-                        mode_model = to_step_mode(mode_model)
+                        mode_model = to_cycle_mode(mode_model)
                         send_cycle()
                     if arg == 's':
-                        mode_model = to_step_mode(mode_model)
+                        mode_model = to_1step_mode(mode_model)
                         send_step()
                     if arg == 'r':
                         mode_model = to_reset_mode(mode_model)

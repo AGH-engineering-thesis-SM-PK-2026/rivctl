@@ -66,6 +66,10 @@ _run1 = '<*   >'
 _run2 = '< *  >'
 _run3 = '<  * >'
 _run4 = '<   *>'
+_1step1 = '1step*'
+_1step2 = '1step '
+_cycle1 = 'cycle*'
+_cycle2 = 'cycle '
 
 
 def update_mode(mode_model, page_model):
@@ -79,6 +83,10 @@ def update_mode(mode_model, page_model):
         return ModeModel(page, _run4)
     if ctl == _run4:
         return ModeModel(page, _run1)
+    if ctl == _1step1:
+        return ModeModel(page, _1step2)
+    if ctl == _cycle1:
+        return ModeModel(page, _cycle2)
     return ModeModel(page, ctl)
 
 
@@ -92,14 +100,18 @@ def to_run_mode(mode_model):
     return ModeModel(page, '< *  >')
 
 
-def to_step_mode(mode_model):
+def to_1step_mode(mode_model):
     page, _ = mode_model
-    return ModeModel(page, '<step>')
+    return ModeModel(page, '1step*')
+
+
+def to_cycle_mode(mode_model):
+    page, _ = mode_model
+    return ModeModel(page, 'cycle*')
 
 
 def to_reset_mode(mode_model):
-    page, _ = mode_model
-    return ModeModel(page, 'reset*')
+    return mode_model
 
 
 def to_upload_mode(model_model):
