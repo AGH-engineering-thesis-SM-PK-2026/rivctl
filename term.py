@@ -497,8 +497,10 @@ def main_view(win, page, prog, tab):
                 prog_val = prog[ndx + i]
                 if (i == 0):
                     _txt(win, '>', (mx, y), yebl())
-                _txt(win, f'{prog_val.loc:>08}  ', (mx + 1, y), yebl())
-                _txt(win, f'{prog_val.src:28}', (mx + 11, y), whbl())
+                loc = f'{prog_val.loc.upper():>08}'
+                src = f'{prog_val.src:28}'
+                _txt(win, loc, (mx + 1, y), yebl())
+                _txt(win, src, (mx + 11, y), whbl())
 
                 # _txt(win, f'{mnemo:6}{params}', (mx + 11, y), whbl())
             else:
@@ -555,6 +557,8 @@ def task_bar(win, uart_model):
     _txt(win, 'Step   ', (33, y), bkcy())
     _txt(win, ' r ', (40, y), whbk())
     _txt(win, 'Reset  ', (43, y), bkcy())
+    _txt(win, ' p ', (50, y), whbk())
+    _txt(win, 'Print  ', (53, y), bkcy())
 
 
 _ctl_mode_colors = {

@@ -2,7 +2,8 @@ import sys
 
 from uart import (
     uart_recv, uart_emit, open_uart,
-    send_halt, send_start, send_step, send_cycle, send_reset, send_prog
+    send_halt, send_start, send_step, send_cycle, send_reset, send_prog,
+    send_print
 )
 from data import (
     Page, Instr,
@@ -60,7 +61,7 @@ def loop(filename, is_tty, stdscr):
     device = filename if is_tty else None
     stored = filename if not is_tty else None
     uart_model = UartModel(0, 0, device)
-    page_model = PageModel(0, 0, True)
+    page_model = PageModel(0, 0, True, True)
     mode_model = ModeModel('empty*', 'ready*')
     tab = 0
     page = None
@@ -81,7 +82,7 @@ def loop(filename, is_tty, stdscr):
         with open_uart(device) as uart, open_db(stored) as db:
             top_ndx = count(db, Page)
             if top_ndx > 0:
-                page_model = PageModel(1, top_ndx, False)
+                page_model = PageModel(1, top_ndx, False, True)
                 page = find_by_ndx(db, Page, 1)
 
             def save_to_db(path):
@@ -248,18 +249,21 @@ def loop(filename, is_tty, stdscr):
                                 (f'{m.latest_}', lambda _: to_latest())
                             ]
                         ))
-                    if arg == 'h':
+                    if arg == 'h' or arg == 'p':
                         mode_model = to_halt_mode(mode_model)
                         send_halt()
+                        send_print()
                     if arg == 'z':
                         mode_model = to_run_mode(mode_model)
                         send_start()
                     if arg == 'a':
                         mode_model = to_cycle_mode(mode_model)
                         send_cycle()
+                        send_print()
                     if arg == 's':
                         mode_model = to_1step_mode(mode_model)
                         send_step()
+                        send_print()
                     if arg == 'r':
                         mode_model = to_reset_mode(mode_model)
                         send_reset()

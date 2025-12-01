@@ -2,7 +2,7 @@ from collections import namedtuple
 
 
 UartModel = namedtuple('UartModel', 'rxc txc dev')
-PageModel = namedtuple('PageModel', 'now top follow')
+PageModel = namedtuple('PageModel', 'now top follow always_print')
 ModeModel = namedtuple('ModeModel', 'page ctl')
 
 
@@ -27,30 +27,35 @@ def reset_tx(uart_model):
 
 
 def upsert_page(page_model, page):
-    now, _, follow = page_model
+    now, _, follow, always_print = page_model
     top = page.ndx
     if follow or now == 0:
-        return PageModel(top, top, follow)
+        return PageModel(top, top, follow, always_print)
 
-    return PageModel(now, top, follow)
+    return PageModel(now, top, follow, always_print)
 
 
 def follow_page(page_model):
-    _, top, _ = page_model
-    return PageModel(top, top, True)
+    _, top, _, always_print = page_model
+    return PageModel(top, top, True, always_print)
 
 
 def move_to_page(page_model, move_by):
-    now, top, _ = page_model
-    return PageModel(max(min(now + move_by, top), 1), top, False)
+    now, top, _, always_print = page_model
+    return PageModel(
+        max(min(now + move_by, top), 1), 
+        top, 
+        False, 
+        always_print
+    )
 
 
 def jump_to_page(page_model, ndx):
-    now, top, _ = page_model
+    now, top, _, always_print = page_model
     if ndx > 0:
-        return PageModel(min(ndx, top), top, False)
+        return PageModel(min(ndx, top), top, False, always_print)
     elif ndx < 0:
-        return PageModel(max(now + ndx, 1), top, False)
+        return PageModel(max(now + ndx, 1), top, False, always_print)
 
 
 def get_page_mode(page_model):
