@@ -1,7 +1,6 @@
 import sqlite3
 
 from collections import namedtuple
-from contextlib import closing
 
 
 Page = namedtuple('Page', 'ndx pc regs')
@@ -49,64 +48,72 @@ def _create_spec(con, ent_type):
     return ent_spec
 
 
-def save_one(con, ent):
-    ent_spec = _get_spec(con, type(ent))
+class Db:
+    def __init__(self, con):
+        self._con = con
 
-    cur = con.cursor()
-    cur.execute(ent_spec.save, tuple(ent))
-    con.commit()
+    @classmethod
+    def to_file(cls, filename):
+        return Db(sqlite3.connect(filename))
 
+    @classmethod
+    def in_memory(cls):
+        return Db(sqlite3.connect(':memory:'))
 
-def drop_all(con, ent_type):
-    ent_spec = _get_spec(con, ent_type)
+    def save_one(self, ent):
+        ent_spec = _get_spec(self._con, type(ent))
 
-    cur = con.cursor()
-    cur.execute(ent_spec.drop_all)
-    con.commit()
+        cur = self._con.cursor()
+        cur.execute(ent_spec.save, tuple(ent))
+        self._con.commit()
 
+    def drop_all(self, ent_type):
+        ent_spec = _get_spec(self._con, ent_type)
 
-def drop_by_ndx(con, ent_type, ndx):
-    ent_spec = _get_spec(con, ent_type)
+        cur = self._con.cursor()
+        cur.execute(ent_spec.drop_all)
+        self._con.commit()
 
-    cur = con.cursor()
-    cur.execute(ent_spec.drop_ndx, (ndx,))
-    con.commit()
+    def drop_by_ndx(self, ent_type, ndx):
+        ent_spec = _get_spec(self._con, ent_type)
 
+        cur = self._con.cursor()
+        cur.execute(ent_spec.drop_ndx, (ndx,))
+        self._con.commit()
 
-def find_all(con, ent_type):
-    ent_spec = _get_spec(con, ent_type)
+    def find_all(self, ent_type):
+        ent_spec = _get_spec(self._con, ent_type)
 
-    cur = con.cursor()
-    cur.execute(ent_spec.find_all)
-    return [ent_type._make(row) for row in cur.fetchall()]
+        cur = self._con.cursor()
+        cur.execute(ent_spec.find_all)
+        return [ent_type._make(row) for row in cur.fetchall()]
 
+    def find_by_ndx(self, ent_type, ndx):
+        ent_spec = _get_spec(self._con, ent_type)
 
-def find_by_ndx(con, ent_type, ndx):
-    ent_spec = _get_spec(con, ent_type)
+        cur = self._con.cursor()
+        cur.execute(ent_spec.find_ndx, (ndx,))
+        row = cur.fetchone()
+        if row:
+            return ent_type._make(row)
+        
+        return None
 
-    cur = con.cursor()
-    cur.execute(ent_spec.find_ndx, (ndx,))
-    row = cur.fetchone()
-    if row:
-        return ent_type._make(row)
-    
-    return None
+    def count(self, ent_type):
+        ent_spec = _get_spec(self._con, ent_type)
 
+        cur = self._con.cursor()
+        cur.execute(ent_spec.count)
+        ent_count, = cur.fetchone()
+        return ent_count
 
-def count(con, ent_type):
-    ent_spec = _get_spec(con, ent_type)
+    def backup(self, dst):
+        self._con.backup(dst._con)
 
-    cur = con.cursor()
-    cur.execute(ent_spec.count)
-    ent_count, = cur.fetchone()
-    return ent_count
+    def save_db(self, filename):
+        dst = Db.to_file(filename)
+        self.backup(dst)
+        dst.close()
 
-
-def open_db(filename=None):
-    database = filename or ':memory:'
-    return closing(sqlite3.connect(database))
-
-
-def save_db(con, filename):
-    with open_db(filename) as dst:
-        con.backup(dst)
+    def close(self):
+        self._con.close()

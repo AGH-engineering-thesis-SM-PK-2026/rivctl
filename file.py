@@ -15,6 +15,20 @@ def read_prog(filename):
                 yield Instr(loc, code, src)
 
 
+# def p():
+#     state = 'init'
+#     buf = ''
+#     for char in self._rx_buffer:
+#         if chr(char) == 'P':
+#             if state != 'init':
+#                 raise ValueError('pc field out of bounds')
+#             state = 'p_sym'
+#         if state == 'p_val':
+#             buf += chr(char)
+#         if state == 'p_sym':
+#             state = 'p_val'
+
+
 # def pad_prog(instrs, nop='00000013'):
 #     max_ndx = int(instrs[-1].loc, 16)
 #     i = 0

@@ -1,69 +1,54 @@
 from collections import namedtuple
 
 
-UartModel = namedtuple('UartModel', 'rxc txc dev')
-PageModel = namedtuple('PageModel', 'now top follow always_print')
-ModeModel = namedtuple('ModeModel', 'page ctl')
+class UartModel(namedtuple('UartModel', 'rxc txc dev')):
+    def flash_rx(self):
+        return UartModel(self.rxc + 1, self.txc, self.dev)  
+
+    def reset_rx(self):
+        return UartModel(0, self.txc, self.dev)  
+
+    def flash_tx(self):
+        return UartModel(self.rxc, self.txc + 1, self.dev)  
+
+    def reset_tx(self):
+        return UartModel(self.rxc, 0, self.dev)  
 
 
-def flash_rx(uart_model):
-    rx, tx, dev = uart_model
-    return UartModel(rx + 1, tx, dev)  
+class PageModel(namedtuple('PageModel', 'now top follow print')):
+    def upsert_page(self, page):
+        top = page.ndx
+        if self.follow or self.now == 0:
+            return PageModel(top, top, self.follow, self.print)
 
+        return PageModel(self.now, top, self.follow, self.print)
 
-def reset_rx(uart_model):
-    _, tx, dev = uart_model
-    return UartModel(0, tx, dev)  
+    def to_follow(self):
+        return PageModel(self.top, self.top, True, self.print)
 
+    def move_to(self, move_by):
+        if self.top == 0:
+            return PageModel(0, self.top, self.follow, self.print)
+        now = max(min(self.now + move_by, self.top), 1)
+        return PageModel(now, self.top, False, self.print)
 
-def flash_tx(uart_model):
-    rx, tx, dev = uart_model
-    return UartModel(rx, tx + 1, dev)  
+    def jump_to(self, ndx):
+        if ndx > 0:
+            now = min(ndx, self.top)
+            return PageModel(now, self.top, False, self.print)
+        elif ndx < 0:
+            now = max(self.now + ndx, 1)
+            return PageModel(now, self.top, False, self.print)
+        
+        return self
 
-
-def reset_tx(uart_model):
-    rx, _, dev = uart_model
-    return UartModel(rx, 0, dev)  
-
-
-def upsert_page(page_model, page):
-    now, _, follow, always_print = page_model
-    top = page.ndx
-    if follow or now == 0:
-        return PageModel(top, top, follow, always_print)
-
-    return PageModel(now, top, follow, always_print)
-
-
-def follow_page(page_model):
-    _, top, _, always_print = page_model
-    return PageModel(top, top, True, always_print)
-
-
-def move_to_page(page_model, move_by):
-    now, top, _, always_print = page_model
-    return PageModel(
-        max(min(now + move_by, top), 1), 
-        top, 
-        False, 
-        always_print
-    )
-
-
-def jump_to_page(page_model, ndx):
-    now, top, _, always_print = page_model
-    if ndx > 0:
-        return PageModel(min(ndx, top), top, False, always_print)
-    elif ndx < 0:
-        return PageModel(max(now + ndx, 1), top, False, always_print)
-
-
-def get_page_mode(page_model):
-    if page_model.top == 0:
-        return '(wait)'
-    if page_model.follow:
-        return 'latest'
-    return 'scroll'
+    @property
+    def mode(self):
+        if self.top == 0:
+            return '(wait)'
+        if self.follow:
+            return 'latest'
+        return 'scroll'
 
 
 _run1 = '<*   >'
@@ -76,73 +61,64 @@ _cycle1 = 'cycle*'
 _cycle2 = 'cycle '
 
 
-def update_mode(mode_model, page_model):
-    page = get_page_mode(page_model)
-    _, ctl = mode_model
-    if ctl == _run1:
-        return ModeModel(page, _run2)
-    if ctl == _run2:
-        return ModeModel(page, _run3)
-    if ctl == _run3:
-        return ModeModel(page, _run4)
-    if ctl == _run4:
-        return ModeModel(page, _run1)
-    if ctl == _1step1:
-        return ModeModel(page, _1step2)
-    if ctl == _cycle1:
-        return ModeModel(page, _cycle2)
-    return ModeModel(page, ctl)
+class ModeModel(namedtuple('ModeModel', 'page ctl')):
+    def update(self, page_model):
+        page = page_model.mode
+        if self.ctl == _run1:
+            return ModeModel(page, _run2)
+        if self.ctl == _run2:
+            return ModeModel(page, _run3)
+        if self.ctl == _run3:
+            return ModeModel(page, _run4)
+        if self.ctl == _run4:
+            return ModeModel(page, _run1)
+        if self.ctl == _1step1:
+            return ModeModel(page, _1step2)
+        if self.ctl == _cycle1:
+            return ModeModel(page, _cycle2)
+        return ModeModel(page, self.ctl)
+
+    def to_halt(self):
+        return ModeModel(self.page, 'halted')
+
+    def to_run(self):
+        return ModeModel(self.page, '< *  >')
+
+    def to_1step(self):
+        return ModeModel(self.page, '1step*')
+
+    def to_cycle(self):
+        return ModeModel(self.page, 'cycle*')
+
+    def to_reset(self):
+        return self
+
+    def to_upload(self):
+        return ModeModel(self.page, 'upload')
 
 
-def to_halt_mode(mode_model):
-    page, _ = mode_model
-    return ModeModel(page, 'halted')
+class Overlays:
+    def __init__(self):
+        self._stack = []
 
+    def show(self, overlay):
+        if len(self._stack) > 0:
+            _, _, last_close = self._stack.pop()
+            last_close()
+        redraw, update, close, *misc = overlay
+        self._stack.append((redraw, update, close))
+        return misc
 
-def to_run_mode(mode_model):
-    page, _ = mode_model
-    return ModeModel(page, '< *  >')
+    @property
+    def has_any(self):
+        return len(self._stack) > 0;
 
-
-def to_1step_mode(mode_model):
-    page, _ = mode_model
-    return ModeModel(page, '1step*')
-
-
-def to_cycle_mode(mode_model):
-    page, _ = mode_model
-    return ModeModel(page, 'cycle*')
-
-
-def to_reset_mode(mode_model):
-    return mode_model
-
-
-def to_upload_mode(model_model):
-    page, _ = model_model
-    return ModeModel(page, 'upload')
-
-
-_stack = []
-
-
-def show(overlay):
-    if len(_stack) > 0:
-        _, _, close = _stack.pop()
-        close()
-    _stack.append(overlay)
-
-
-def has_overlays():
-    return len(_stack) > 0;
-
-
-def update_overlay(poll):
-    _, update, close = _stack[-1]
-    if update(poll) == 'quit':
-        close()
-        _stack.pop()
-    # in case update replaced overlay, won't redraw old window
-    if has_overlays():
-        redraw_overlay, _, _ = _stack[-1]
-        redraw_overlay()
+    def update(self, poll_result):
+        _, update, close = self._stack[-1]
+        if update(poll_result) == 'quit':
+            close()
+            self._stack.pop()
+        # in case update replaced overlay, won't redraw old window
+        if self.has_any:
+            redraw_overlay, _, _ = self._stack[-1]
+            redraw_overlay()

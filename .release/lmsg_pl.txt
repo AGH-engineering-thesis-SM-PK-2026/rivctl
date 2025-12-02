@@ -121,8 +121,14 @@ Plik program nie został załadowany poprawnie.
 [upload_preview]
 Podgląd Programu
 .
+[uploading]
+Wysyłanie...
+.
 [upload]
 Wgraj
+.
+[upload_hint]
+Wybierz plik .lst do wysłania.
 .
 [to_page]
 Do Strony

@@ -151,8 +151,14 @@ Program file could not be loaded.
 [upload_preview]
 Upload Preview
 .
+[uploading]
+Uploading...
+.
 [upload]
 Upload
+.
+[upload_hint]
+Choose a .lst file for upload.
 .
 [to_page]
 To Page
