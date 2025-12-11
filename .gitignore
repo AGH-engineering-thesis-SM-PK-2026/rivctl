@@ -9,5 +9,8 @@ rivctl_*/**
 # session files
 *.db
 
-# dump files
+# out files
+*.o
+*.elf
 *.lst
+*.riv
