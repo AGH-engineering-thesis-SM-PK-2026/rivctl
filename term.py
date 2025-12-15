@@ -396,6 +396,16 @@ def menu(pos, acts):
     return redraw, update, close
 
 
+def _cycle(items, from_index):
+    if len(items):
+        yield from []
+    index = from_index
+    while True:
+        if index >= len(items):
+            index = 0
+        yield items[index]
+
+
 def picker(title, message, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
     vw, vh = sz
 
@@ -430,8 +440,11 @@ def picker(title, message, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
         win.txt(message[w-4:], (3, h - 3), fc())
         win.refresh()
 
+    def _get_parent(p):
+        return p.joinpath(pathlib.Path('..'))
+
     def _path_to_items(p):
-        parent = p.joinpath(pathlib.Path('..'))
+        parent = _get_parent(p)
         items = list(p.glob('*'))
         dirs = filter(lambda item: item.is_dir(), items)
         files = filter(lambda item: not item.is_dir(), items)
@@ -442,6 +455,7 @@ def picker(title, message, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
         ev, arg = poll
         items = _path_to_items(path)
         bottom = len(items) - vh
+        cnt = vh // 2
         if not accept_ev:
             if ev == 'empty':
                 accept_ev = True
@@ -449,7 +463,6 @@ def picker(title, message, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
             assert isinstance(arg, tuple)
             _, my = arg
             max_sel = len(items) - 1
-            cnt = vh // 2
             sel = max(min(sel - my, max_sel), 0)
             row = max(min(sel - cnt, bottom), 0)
         elif ev == 'key':
@@ -460,8 +473,21 @@ def picker(title, message, sz, act, fc=whbk, dc=cybk, sc=bkcy, init='.'):
                 item = items[sel]
                 if item.is_dir():
                     path = item
+                    sel = 0
+                    row = max(min(sel - cnt, bottom), 0)
                     return 'ok'
                 return act(item)
+            elif arg == 'del':
+                path = _get_parent(path)
+                sel = 0
+                row = max(min(sel - cnt, bottom), 0)
+            else:
+                entries = list(enumerate(items))
+                for i, item in entries[sel+1:] + entries[:sel]:
+                    if item.name.startswith(arg):
+                        sel = i
+                        row = max(min(sel - cnt, bottom), 0)
+                        break
         return 'ok'
 
     def close():
