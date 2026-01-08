@@ -588,21 +588,13 @@ def main_view(win, page, prog, tab):
         win.txt('no pages yet', (rx + 2, 6), whbl())
 
     if page:
-        data_vals = ['00000000'] * 32
-        for i, data_val in zip(range(32), data_vals):
-            x = i % 4 * 10 + mx + 1
-            y = i // 4 + oy
-            win.txt(f'{data_val:8}', (x, y), whbl())
-    else:
-        win.txt('no pages yet', (mx + 2, 6), whbl())
-
-    if page:
         ndx = int(page.pc, 16) // 4;
-        for i in range(8):
-            y = i + oy + 10
-            if ndx + i < len(prog):
-                prog_val = prog[ndx + i]
-                if (i == 0):
+        for i in range(18):
+            off = i - 4
+            y = i + oy
+            if ndx + off >= 0 and ndx + off < len(prog):
+                prog_val = prog[ndx + off]
+                if off == 0:
                     win.txt('>', (mx, y), yebl())
                 loc = f'{prog_val.loc.upper():>08}'
                 src = prog_val.src[:24]
@@ -614,22 +606,28 @@ def main_view(win, page, prog, tab):
                 win.txt('--------', (mx + 1, y), yebl())
                 win.txt('-', (mx + 11, y), whbl())
     else:
-        win.txt('no pages yet', (mx + 2, 16), whbl())
-        
+        win.txt('no pages yet', (mx + 2, 6), whbl())
+
     win.draw_outline(
         (rx, 4), (32, 18), whbl(), 
         ('regfile', None)
     )
-    win.draw_outline(
-        (mx, 4), (40, 8), whbl(),
-        ('datamem', None), 
-        ('offset: 00000000' if page else 'offset:      N/A', None) 
-    )
-    win.draw_outline(
-        (mx, 14), (40, 8), whbl(), 
-        ('progmem', None),
-        ('offset: 00000044' if page else 'offset:      N/A', None)
-    )
+  
+    if page:
+        ndx = int(page.pc, 16) // 4;
+        percent = (ndx + 1) / len(prog) * 100
+        progress = f'at: {percent:5.1f}%'
+        win.draw_outline(
+            (mx, 4), (40, 18), whbl(), 
+            ('progmem', None),
+            (progress, None)
+        )
+    else:
+        win.draw_outline(
+            (mx, 4), (40, 18), whbl(), 
+            ('progmem', None),
+            ('at: ---.-%', None)
+        )
 
 
 def task_bar(win, uart_model):
